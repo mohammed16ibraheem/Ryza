@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { FiMenu, FiX, FiShoppingCart, FiSearch, FiUser, FiChevronDown } from 'react-icons/fi'
 
 export default function Header() {
@@ -60,14 +61,32 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2 touch-manipulation">
-            <span className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-600">
-              Ryza
-            </span>
+          <Link href="/" className="relative flex items-center justify-center touch-manipulation group hover:opacity-90 transition-opacity">
+            <div className="relative flex items-center justify-center">
+              {/* Logo Image Behind Text */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Image
+                  src="/logo.png"
+                  alt="Ryza Logo"
+                  width={64}
+                  height={64}
+                  className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                    filter: 'brightness(0.7) contrast(1.5) saturate(1.3)'
+                  }}
+                  priority
+                />
+              </div>
+              {/* Text Over Logo */}
+              <span className="relative text-xl sm:text-2xl md:text-3xl font-bold text-primary-600 z-10">
+                Ryza
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-6">
+          <nav className="hidden lg:flex items-center space-x-6 pt-1">
             {navLinks.map((link) => {
               if (link.name === 'Hijabs') {
                 return (
@@ -78,7 +97,7 @@ export default function Header() {
                     onMouseLeave={() => setIsHijabsDropdownOpen(false)}
                   >
                     <div className="flex items-center space-x-1 group">
-                      <Link href={link.href} className="text-gray-700 hover:text-primary-600 transition-colors font-medium text-sm">
+                      <Link href={link.href} className="text-gray-700 hover:text-primary-600 transition-colors font-medium text-base">
                         {link.name}
                       </Link>
                       <FiChevronDown className={`w-4 h-4 text-gray-500 group-hover:text-primary-600 transition-all duration-200 ${isHijabsDropdownOpen ? 'rotate-180 text-primary-600' : ''}`} />
@@ -123,7 +142,7 @@ export default function Header() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className="text-gray-700 hover:text-primary-600 transition-colors font-medium text-sm"
+                  className="text-gray-700 hover:text-primary-600 transition-colors font-medium text-base"
                 >
                   {link.name}
                 </Link>
@@ -132,27 +151,27 @@ export default function Header() {
           </nav>
 
           {/* Right Icons */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
+          <div className="flex items-center justify-center gap-3 sm:gap-4">
             <button 
-              className="p-2 sm:p-3 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
+              className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
               aria-label="Search"
             >
               <FiSearch className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
             <Link
               href="/cart"
-              className="relative p-2 sm:p-3 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
+              className="relative flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
               aria-label="Shopping Cart"
             >
               <FiShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
               {cartCount > 0 && (
-                <span className="absolute top-0 right-0 bg-primary-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 bg-primary-600 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center font-bold">
                   {cartCount > 99 ? '99+' : cartCount}
                 </span>
               )}
             </Link>
             <button 
-              className="p-2 sm:p-3 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
+              className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
               aria-label="User Account"
             >
               <FiUser className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -161,13 +180,13 @@ export default function Header() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden p-2 sm:p-3 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
+              className="lg:hidden flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
               aria-label="Toggle Menu"
             >
               {isMenuOpen ? (
-                <FiX className="w-6 h-6" />
+                <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
               ) : (
-                <FiMenu className="w-6 h-6" />
+                <FiMenu className="w-5 h-5 sm:w-6 sm:h-6" />
               )}
             </button>
           </div>

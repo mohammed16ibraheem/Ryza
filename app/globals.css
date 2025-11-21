@@ -187,3 +187,10 @@ img {
   background: #540863;
 }
 
+/* Logo styling - transparent background and dark */
+header img[alt="Ryza Logo"] {
+  background: transparent !important;
+  mix-blend-mode: normal;
+  filter: brightness(0.7) contrast(1.5) saturate(1.3);
+}
+
