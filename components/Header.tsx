@@ -61,28 +61,24 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link href="/" className="relative flex items-center justify-center touch-manipulation group hover:opacity-90 transition-opacity">
-            <div className="relative flex items-center justify-center">
-              {/* Logo Image Behind Text */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Image
-                  src="/logo.png"
-                  alt="Ryza Logo"
-                  width={64}
-                  height={64}
-                  className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain"
-                  style={{ 
-                    backgroundColor: 'transparent',
-                    filter: 'brightness(0.7) contrast(1.5) saturate(1.3)'
-                  }}
-                  priority
-                />
-              </div>
-              {/* Text Over Logo */}
-              <span className="relative text-xl sm:text-2xl md:text-3xl font-bold text-primary-600 z-10">
-                Ryza
-            </span>
+          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 touch-manipulation group hover:opacity-90 transition-opacity ml-2 sm:ml-3">
+            <div className="relative flex-shrink-0">
+              <Image
+                src="/logo.png"
+                alt="Ryza Logo"
+                width={64}
+                height={64}
+                className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain"
+                style={{ 
+                  backgroundColor: 'transparent',
+                  filter: 'brightness(0.7) contrast(1.5) saturate(1.3)'
+                }}
+                priority
+              />
             </div>
+            <span className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-600">
+              Ryza
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
