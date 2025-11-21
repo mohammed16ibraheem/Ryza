@@ -112,8 +112,8 @@ export default function Categories() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
                   <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 text-white">
-                    <h3 className="text-xl sm:text-2xl font-bold mb-2">{category.name}</h3>
-                    <p className="text-xs sm:text-sm text-white/90 mb-3">{category.description}</p>
+                    <h3 className="text-xl sm:text-2xl font-bold mb-2 text-white">{category.name}</h3>
+                    <p className="text-xs sm:text-sm text-white mb-3">{category.description}</p>
                     <div className="flex items-center text-white font-semibold group-hover:translate-x-2 transition-transform text-sm sm:text-base">
                       Shop Now
                       <FiArrowRight className="ml-2 w-4 h-4" />

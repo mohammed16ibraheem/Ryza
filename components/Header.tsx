@@ -93,7 +93,7 @@ export default function Header() {
                     onMouseLeave={() => setIsHijabsDropdownOpen(false)}
                   >
                     <div className="flex items-center space-x-1 group">
-                      <Link href={link.href} className="text-gray-700 hover:text-primary-600 transition-colors font-medium text-base">
+                      <Link href={link.href} className="text-gray-700 hover:text-primary-600 transition-colors font-medium text-lg">
                         {link.name}
                       </Link>
                       <FiChevronDown className={`w-4 h-4 text-gray-500 group-hover:text-primary-600 transition-all duration-200 ${isHijabsDropdownOpen ? 'rotate-180 text-primary-600' : ''}`} />
@@ -138,7 +138,7 @@ export default function Header() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className="text-gray-700 hover:text-primary-600 transition-colors font-medium text-base"
+                  className="text-gray-700 hover:text-primary-600 transition-colors font-medium text-lg"
                 >
                   {link.name}
                 </Link>
@@ -201,7 +201,7 @@ export default function Header() {
                       <Link 
                         href={link.href} 
                         onClick={() => setIsMenuOpen(false)}
-                        className="flex-1 text-gray-700 hover:text-primary-600 transition-colors font-medium py-2.5 text-base"
+                        className="flex-1 text-gray-700 hover:text-primary-600 transition-colors font-medium py-2.5 text-lg"
                       >
                         {link.name}
                       </Link>
@@ -264,7 +264,7 @@ export default function Header() {
                   key={link.name}
                   href={link.href}
                   onClick={() => setIsMenuOpen(false)}
-                  className="block text-gray-700 hover:text-primary-600 transition-colors font-medium py-2"
+                  className="block text-gray-700 hover:text-primary-600 transition-colors font-medium py-2 text-lg"
                 >
                   {link.name}
                 </Link>
