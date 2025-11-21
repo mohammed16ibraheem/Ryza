@@ -23,6 +23,7 @@ interface Product {
   discount?: string
   weight?: string
   video?: string
+  sizes?: string[] // Available sizes for the product
   colorVariants?: ColorVariant[]
   imageColors?: string[] // Color names for each image
   outOfStockImages?: number[] // Array of image indices that are out of stock
