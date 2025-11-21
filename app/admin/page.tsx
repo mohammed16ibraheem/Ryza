@@ -105,6 +105,10 @@ export default function AdminPanel() {
   const [colorVariants, setColorVariants] = useState<Array<{color: string, imageFiles: File[], imagePreviews: string[], uploadedImages: string[]}>>([])
   const [currentColor, setCurrentColor] = useState('')
 
+  // Category thumbnails state
+  const [categoryThumbnails, setCategoryThumbnails] = useState<{ [key: string]: string }>({})
+  const [uploadingThumbnail, setUploadingThumbnail] = useState<string | null>(null)
+
   // Check if running on Vercel
   useEffect(() => {
     // Check Vercel environment by testing API
@@ -125,6 +129,21 @@ export default function AdminPanel() {
       }
     }
     checkVercel()
+  }, [])
+
+  // Fetch category thumbnails
+  useEffect(() => {
+    const fetchThumbnails = async () => {
+      try {
+        const response = await fetch('/api/category-thumbnails')
+        const data = await response.json()
+        setCategoryThumbnails(data.thumbnails || {})
+      } catch (error) {
+        console.error('Error fetching thumbnails:', error)
+      }
+    }
+    
+    fetchThumbnails()
   }, [])
 
   // Load products from API on mount
@@ -560,6 +579,57 @@ export default function AdminPanel() {
       setTimeout(() => setUploadStatus(''), 5000)
     }
   }
+
+  // Handle category thumbnail upload
+  const handleCategoryThumbnailUpload = async (categoryKey: string, file: File) => {
+    if (!file) return
+    
+    setUploadingThumbnail(categoryKey)
+    try {
+      // Compress image first
+      const compressedFile = await compressImage(file)
+      
+      const formData = new FormData()
+      formData.append('category', categoryKey)
+      formData.append('file', compressedFile)
+      
+      const response = await fetch('/api/category-thumbnails', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        if (errorData.vercel) {
+          throw new Error('Category thumbnail uploads are not available on Vercel. Please migrate to cloud storage.')
+        }
+        throw new Error(errorData.message || 'Failed to upload thumbnail')
+      }
+      
+      const data = await response.json()
+      setCategoryThumbnails(prev => ({
+        ...prev,
+        [categoryKey]: data.thumbnail
+      }))
+      setUploadStatus(`✅ Thumbnail uploaded successfully for ${categoryKey}`)
+      setTimeout(() => setUploadStatus(''), 3000)
+    } catch (error) {
+      console.error('Error uploading thumbnail:', error)
+      setUploadStatus(`❌ Error: ${error instanceof Error ? error.message : 'Failed to upload thumbnail'}`)
+      setTimeout(() => setUploadStatus(''), 5000)
+    } finally {
+      setUploadingThumbnail(null)
+    }
+  }
+
+  const categoryThumbnailConfig = [
+    { key: 'salah-essential', label: '1. Salah Essential', description: 'Modest dresses' },
+    { key: 'hijabs', label: '2. Hijabs', description: 'Beautiful hijab collection' },
+    { key: 'gift-hampers', label: '3. Gift Hampers', description: 'Beautiful gift hampers with books, flowers & more' },
+    { key: 'hair-essentials', label: '4. Hair Essentials', description: 'Complete your look' },
+    { key: 'jewellery', label: '5. Jewellery', description: 'Elegant jewellery collection' },
+    { key: 'offers', label: '6. Offers', description: 'Limited-time deals & bundles' },
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50 py-16">
@@ -1010,6 +1080,103 @@ export default function AdminPanel() {
               </button>
             </div>
           </form>
+        </div>
+
+        {/* Category Thumbnails Management Section */}
+        <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-gray-100">
+          <div className="mb-6">
+            <p className="text-sm uppercase tracking-[0.2em] text-primary-600 font-semibold mb-2">
+              Category Management
+            </p>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+              Category Thumbnails
+            </h2>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Upload custom thumbnail images for each category in the "Shop by Category" section. These images will be displayed on the homepage.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {categoryThumbnailConfig.map((category) => (
+              <div
+                key={category.key}
+                className="border-2 border-gray-200 rounded-xl p-4 sm:p-5 bg-gray-50 hover:border-primary-300 transition-all"
+              >
+                <div className="mb-3">
+                  <h3 className="font-bold text-gray-900 text-base sm:text-lg mb-1">
+                    {category.label}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    {category.description}
+                  </p>
+                </div>
+
+                {/* Current Thumbnail Preview */}
+                {categoryThumbnails[category.key] ? (
+                  <div className="relative mb-3 rounded-lg overflow-hidden border-2 border-primary-300">
+                    <img
+                      src={categoryThumbnails[category.key]}
+                      alt={category.label}
+                      className="w-full h-32 sm:h-40 object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none'
+                      }}
+                    />
+                    <div className="absolute top-2 right-2 bg-primary-600 text-white text-xs font-bold px-2 py-1 rounded">
+                      Current
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-3 h-32 sm:h-40 bg-gradient-to-br from-primary-200 to-primary-300 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                    <p className="text-xs sm:text-sm text-gray-500 text-center px-2">
+                      No thumbnail uploaded
+                    </p>
+                  </div>
+                )}
+
+                {/* Upload Button */}
+                <div className="w-full">
+                  <input
+                    type="file"
+                    id={`thumbnail-upload-${category.key}`}
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        handleCategoryThumbnailUpload(category.key, file)
+                      }
+                      e.target.value = '' // Reset input
+                    }}
+                    className="hidden"
+                    disabled={uploadingThumbnail === category.key}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById(`thumbnail-upload-${category.key}`) as HTMLInputElement
+                      if (input && !uploadingThumbnail) {
+                        input.click()
+                      }
+                    }}
+                    disabled={uploadingThumbnail === category.key}
+                    className="w-full px-4 py-2.5 bg-primary-600 text-white rounded-lg font-semibold text-sm sm:text-base hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px]"
+                  >
+                    {uploadingThumbnail === category.key ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FiUploadCloud className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span>{categoryThumbnails[category.key] ? 'Change Thumbnail' : 'Upload Thumbnail'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {loadingProducts ? (

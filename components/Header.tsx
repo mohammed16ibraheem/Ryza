@@ -61,7 +61,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 touch-manipulation group hover:opacity-90 transition-opacity ml-2 sm:ml-3">
+          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 touch-manipulation group hover:opacity-90 transition-opacity ml-6 sm:ml-8 md:ml-10">
             <div className="relative flex-shrink-0">
               <Image
                 src="/logo.png"
