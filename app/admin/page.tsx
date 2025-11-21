@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { FiUploadCloud, FiPlay, FiCheckCircle, FiTrash2, FiEdit2, FiFolder } from 'react-icons/fi'
+import { compressImage, compressImages, compressVideo } from '@/lib/compression'
 
 const PRODUCT_CATEGORIES = [
   'Salah Essential',
@@ -36,15 +37,41 @@ type DraftProduct = {
   folderPath?: string
 }
 
-const MAX_IMAGES = 3
+const MAX_IMAGES = 4 // 1 thumbnail + 3 product images
+
+// Map category names to folder names
+const getCategoryFolderName = (category: string): string => {
+  const categoryMap: { [key: string]: string } = {
+    'Salah Essential': 'Salah-Essential',
+    'Hijabs': 'Hijabs',
+    'Gift Hampers': 'Gift-Hampers',
+    'Hair Essentials': 'Hair-Essentials',
+    'Hair Accessories': 'Hair-Essentials', // Legacy support
+    'Jewellery': 'Jewellery',
+    'Offers': 'Offers',
+    'Dresses': 'Salah-Essential', // Legacy support - map old "Dresses" to "Salah Essential"
+  }
+  return categoryMap[category] || category.replace(/\s+/g, '-')
+}
+
+// Map Hijab sub-category to folder name
+const getHijabSubCategoryFolderName = (subCategory: string): string => {
+  const subCategoryMap: { [key: string]: string } = {
+    'Hijab': 'Hijab',
+    'Accessory': 'Hijab-Essentials',
+    'Luxury': 'Luxury-Hijabs',
+    'Day to Day Life': 'Day-to-Day-Life',
+  }
+  return subCategoryMap[subCategory] || subCategory.replace(/\s+/g, '-')
+}
 
 // Generate folder path based on category and subCategory
 const getFolderPath = (category: string, subCategory?: string): string => {
   const basePath = 'images'
-  const categoryFolder = category.replace(/\s+/g, '-') // Replace spaces with hyphens
+  const categoryFolder = getCategoryFolderName(category)
   
   if (category === 'Hijabs' && subCategory) {
-    const subFolder = subCategory.replace(/\s+/g, '-')
+    const subFolder = getHijabSubCategoryFolderName(subCategory)
     return `${basePath}/${categoryFolder}/${subFolder}`
   }
   
@@ -137,16 +164,33 @@ export default function AdminPanel() {
     fetchProducts()
   }, [])
 
-  const handleImagesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImagesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files ? Array.from(event.target.files) : []
     const limitedFiles = files.slice(0, MAX_IMAGES)
-    setImageFiles(limitedFiles)
-    const previews = limitedFiles.map((file) => URL.createObjectURL(file))
-    setImagePreviews(previews)
-    setExistingImages([])
-    // Reset out of stock selection and colors when new images are uploaded
-    setOutOfStockImages([])
-    setImageColors(['', '', ''])
+    
+    // Compress images before setting them
+    setUploadStatus('Compressing images...')
+    try {
+      const compressedFiles = await compressImages(limitedFiles)
+      setImageFiles(compressedFiles)
+      const previews = compressedFiles.map((file) => URL.createObjectURL(file))
+      setImagePreviews(previews)
+      setExistingImages([])
+      // Reset out of stock selection and colors when new images are uploaded
+      setOutOfStockImages([])
+      setImageColors(['', '', ''])
+      setUploadStatus('')
+    } catch (error) {
+      console.error('Error compressing images:', error)
+      // Fallback to original files if compression fails
+      setImageFiles(limitedFiles)
+      const previews = limitedFiles.map((file) => URL.createObjectURL(file))
+      setImagePreviews(previews)
+      setExistingImages([])
+      setOutOfStockImages([])
+      setImageColors(['', '', ''])
+      setUploadStatus('')
+    }
   }
 
   const handleImageColorChange = (index: number, value: string) => {
@@ -163,11 +207,32 @@ export default function AdminPanel() {
     )
   }
 
-  const handleVideoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleVideoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      setVideoFile(file)
-      setVideoPreview(URL.createObjectURL(file))
+      // Validate video file type
+      if (!file.type.startsWith('video/')) {
+        setUploadStatus('❌ Please select a valid video file')
+        setTimeout(() => setUploadStatus(''), 3000)
+        return
+      }
+      
+      // Compress and trim video before setting it
+      setUploadStatus('Processing video (trimming to 1 minute and compressing)...')
+      try {
+        const compressedVideo = await compressVideo(file)
+        setVideoFile(compressedVideo)
+        setVideoPreview(URL.createObjectURL(compressedVideo))
+        setUploadStatus('✅ Video processed successfully (max 1 minute, compressed)')
+        setTimeout(() => setUploadStatus(''), 3000)
+      } catch (error) {
+        console.error('Error compressing video:', error)
+        // Fallback to original file if compression fails
+        setVideoFile(file)
+        setVideoPreview(URL.createObjectURL(file))
+        setUploadStatus('⚠️ Video compression failed, using original file')
+        setTimeout(() => setUploadStatus(''), 3000)
+      }
     } else {
       setVideoFile(null)
       setVideoPreview(undefined)
@@ -263,16 +328,33 @@ export default function AdminPanel() {
     }
   }
 
-  const handleColorImagesChange = (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleColorImagesChange = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files ? Array.from(event.target.files) : []
     const limitedFiles = files.slice(0, MAX_IMAGES)
-    const previews = limitedFiles.map((file) => URL.createObjectURL(file))
     
-    setColorVariants(colorVariants.map((variant, i) => 
-      i === index 
-        ? { ...variant, imageFiles: limitedFiles, imagePreviews: previews }
-        : variant
-    ))
+    // Compress images before setting them
+    setUploadStatus('Compressing images...')
+    try {
+      const compressedFiles = await compressImages(limitedFiles)
+      const previews = compressedFiles.map((file) => URL.createObjectURL(file))
+      
+      setColorVariants(colorVariants.map((variant, i) => 
+        i === index 
+          ? { ...variant, imageFiles: compressedFiles, imagePreviews: previews }
+          : variant
+      ))
+      setUploadStatus('')
+    } catch (error) {
+      console.error('Error compressing color variant images:', error)
+      // Fallback to original files if compression fails
+      const previews = limitedFiles.map((file) => URL.createObjectURL(file))
+      setColorVariants(colorVariants.map((variant, i) => 
+        i === index 
+          ? { ...variant, imageFiles: limitedFiles, imagePreviews: previews }
+          : variant
+      ))
+      setUploadStatus('')
+    }
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -514,7 +596,7 @@ export default function AdminPanel() {
                 {editingProductId ? 'Edit Product' : 'Create a new product card'}
               </h1>
               <p className="text-gray-500 mt-2">
-                Upload up to 3 images and 1 video with pricing & descriptions. Choose the collection where it should appear.
+                Upload up to 4 images (1 thumbnail + 3 product images) and 1 video with pricing & descriptions. Choose the collection where it should appear.
               </p>
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-500">
@@ -718,8 +800,8 @@ export default function AdminPanel() {
                     <label htmlFor="product-images" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500">
                       <FiUploadCloud className="w-8 h-8 text-primary-500" />
                       <div>
-                        <p className="font-semibold text-gray-700">Upload up to 3 images</p>
-                        <p className="text-xs text-gray-400">PNG, JPG, JPEG</p>
+                        <p className="font-semibold text-gray-700">Upload up to 4 images</p>
+                        <p className="text-xs text-gray-400">PNG, JPG, JPEG (1st image = Thumbnail)</p>
                       </div>
                     </label>
                     <p className="text-xs text-gray-400 mt-2">Selected: {imagePreviews.length} / {MAX_IMAGES}</p>
@@ -743,8 +825,8 @@ export default function AdminPanel() {
                   <label htmlFor="product-images-hijabs" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500">
                     <FiUploadCloud className="w-8 h-8 text-primary-500" />
                     <div>
-                      <p className="font-semibold text-gray-700">Upload up to 3 images</p>
-                      <p className="text-xs text-gray-400">PNG, JPG, JPEG</p>
+                      <p className="font-semibold text-gray-700">Upload up to 4 images</p>
+                      <p className="text-xs text-gray-400">PNG, JPG, JPEG (1st image = Thumbnail)</p>
                     </div>
                   </label>
                   <p className="text-xs text-gray-400 mt-2">Selected: {imagePreviews.length} / {MAX_IMAGES}</p>
@@ -755,11 +837,21 @@ export default function AdminPanel() {
             {imagePreviews.length > 0 && (
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-2">Image Preview</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {imagePreviews.map((src, index) => (
                     <div key={index} className="space-y-2">
-                      <div className="relative rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+                      <div className="relative rounded-2xl overflow-hidden border-2 shadow-sm" style={{
+                        borderColor: index === 0 ? '#92487A' : '#e5e7eb'
+                      }}>
                         <img src={src} alt={`Preview ${index + 1}`} className="w-full h-40 object-cover" />
+                        {/* Thumbnail Badge */}
+                        {index === 0 && (
+                          <div className="absolute top-2 left-2 z-10">
+                            <span className="bg-primary-600 text-white px-3 py-1 rounded-lg font-bold text-xs shadow-lg">
+                              📸 THUMBNAIL
+                            </span>
+                          </div>
+                        )}
                         <div className="absolute top-2 right-2">
                           <label className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-md cursor-pointer hover:bg-white transition-all">
                             <input
@@ -769,7 +861,7 @@ export default function AdminPanel() {
                               className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
                             />
                             <span className="text-xs font-semibold text-gray-700">
-                              {index + 1} {outOfStockImages.includes(index) ? '✓ Out of Stock' : 'Mark Out of Stock'}
+                              {index === 0 ? 'Thumbnail' : `Image ${index + 1}`} {outOfStockImages.includes(index) ? '✓ Out of Stock' : 'Mark Out of Stock'}
                             </span>
                           </label>
                         </div>
@@ -782,18 +874,23 @@ export default function AdminPanel() {
                         )}
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-700">Color Name for Image {index + 1}</label>
+                        <label className="text-xs font-semibold text-gray-700">
+                          {index === 0 ? 'Thumbnail' : `Image ${index + 1}`} Color Name
+                        </label>
                         <input
                           type="text"
                           value={imageColors[index] || ''}
                           onChange={(e) => handleImageColorChange(index, e.target.value)}
-                          placeholder={`e.g., ${index === 0 ? 'brown lightbround morelightbroud' : index === 1 ? 'green lightgreen morelightgreen' : 'black blue lightbule'}`}
+                          placeholder={index === 0 ? 'Thumbnail color (optional)' : `e.g., ${index === 1 ? 'brown lightbround morelightbroud' : index === 2 ? 'green lightgreen morelightgreen' : 'black blue lightbule'}`}
                           className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-200"
                         />
                       </div>
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  <span className="font-semibold text-primary-600">Note:</span> The first image (Image 1) is the <strong>Thumbnail</strong> that will be shown in product listings. Images 2-4 will be shown in the product detail page.
+                </p>
               </div>
             )}
 
@@ -884,7 +981,7 @@ export default function AdminPanel() {
                   <FiPlay className="w-8 h-8 text-primary-500" />
                   <div>
                     <p className="font-semibold text-gray-700">Upload a video</p>
-                    <p className="text-xs text-gray-400">MP4, MOV, WEBM up to 60s</p>
+                    <p className="text-xs text-gray-400">MP4, MOV, WEBM (max 1 minute, auto-compressed)</p>
                   </div>
                 </label>
                 {videoPreview && (

@@ -31,7 +31,7 @@ export default function Hero() {
               <FiArrowRight className="ml-2 w-5 h-5" />
             </Link>
             <Link
-              href="/products/hijabs"
+              href="/products"
               className="inline-flex items-center justify-center px-6 sm:px-8 py-3 bg-white/40 border-2 border-primary-600 text-primary-800 rounded-full font-semibold hover:bg-white/50 transition-all touch-manipulation min-h-[44px]"
             >
               Explore Collection

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, readFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
+import { writeFile, readFile, mkdir, unlink, rmdir } from 'fs/promises'
+import { existsSync, readdirSync, statSync } from 'fs'
 import path from 'path'
 
 const PRODUCTS_FILE = path.join(process.cwd(), 'data', 'products.json')
@@ -43,17 +43,23 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
 
     if (category) {
+      // Map URL category to database category
+      const categoryMap: { [key: string]: string } = {
+        'salah-essential': 'Salah Essential',
+        'dresses': 'Salah Essential', // Legacy support - map old "dresses" URL to "Salah Essential"
+        'hijabs': 'Hijabs',
+        'gift-hampers': 'Gift Hampers',
+        'hair-accessories': 'Hair Essentials',
+        'hair-essentials': 'Hair Essentials',
+        'jewellery': 'Jewellery',
+        'offers': 'Offers',
+      }
+      
+      // Decode category if it's URL encoded
+      const decodedCategory = decodeURIComponent(category)
+      const dbCategory = categoryMap[decodedCategory] || decodedCategory
+      
       const filtered = products.filter((p: any) => {
-        // Map URL category to database category
-        const categoryMap: { [key: string]: string } = {
-          'dresses': 'Dresses',
-          'hijabs': 'Hijabs',
-          'gift-hampers': 'Gift Hampers',
-          'hair-accessories': 'Hair Accessories',
-          'offers': 'Offers',
-        }
-        
-        const dbCategory = categoryMap[category] || category
         return p.category === dbCategory
       })
       return NextResponse.json({ products: filtered })
@@ -149,10 +155,111 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
+    const product = products[productIndex]
+    
+    // Delete all associated files
+    try {
+      const publicPath = path.join(process.cwd(), 'public')
+      const deletedFiles: string[] = []
+
+      // Delete product images
+      if (product.images && Array.isArray(product.images)) {
+        for (const imagePath of product.images) {
+          if (imagePath && typeof imagePath === 'string') {
+            const fullPath = path.join(publicPath, imagePath)
+            if (existsSync(fullPath)) {
+              try {
+                await unlink(fullPath)
+                deletedFiles.push(imagePath)
+              } catch (err) {
+                console.error(`Error deleting image ${imagePath}:`, err)
+              }
+            }
+          }
+        }
+      }
+
+      // Delete product video
+      if (product.video && typeof product.video === 'string') {
+        const videoPath = path.join(publicPath, product.video)
+        if (existsSync(videoPath)) {
+          try {
+            await unlink(videoPath)
+            deletedFiles.push(product.video)
+          } catch (err) {
+            console.error(`Error deleting video ${product.video}:`, err)
+          }
+        }
+      }
+
+      // Delete color variant images
+      if (product.colorVariants && Array.isArray(product.colorVariants)) {
+        for (const variant of product.colorVariants) {
+          if (variant.images && Array.isArray(variant.images)) {
+            for (const imagePath of variant.images) {
+              if (imagePath && typeof imagePath === 'string') {
+                const fullPath = path.join(publicPath, imagePath)
+                if (existsSync(fullPath)) {
+                  try {
+                    await unlink(fullPath)
+                    deletedFiles.push(imagePath)
+                  } catch (err) {
+                    console.error(`Error deleting color variant image ${imagePath}:`, err)
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Helper function to recursively delete empty folders
+      const deleteEmptyFolders = async (dirPath: string): Promise<void> => {
+        try {
+          if (!existsSync(dirPath)) return
+          
+          const files = readdirSync(dirPath)
+          
+          // If folder is empty, try to delete it
+          if (files.length === 0) {
+            try {
+              await rmdir(dirPath)
+              console.log(`Deleted empty folder: ${dirPath}`)
+              
+              // Try to delete parent folder if it becomes empty
+              const parentDir = path.dirname(dirPath)
+              if (parentDir !== publicPath && parentDir !== path.join(publicPath, 'images')) {
+                await deleteEmptyFolders(parentDir)
+              }
+            } catch (err) {
+              // Folder might not be empty or permission issue, ignore
+            }
+          }
+        } catch (err) {
+          // Ignore errors for folder deletion
+        }
+      }
+
+      // Try to delete the product's folder if it's empty
+      if (product.folderPath) {
+        const folderPath = path.join(publicPath, product.folderPath)
+        await deleteEmptyFolders(folderPath)
+      }
+
+      console.log(`Deleted ${deletedFiles.length} files for product ${productId}`)
+    } catch (fileError) {
+      console.error('Error deleting product files:', fileError)
+      // Continue with database deletion even if file deletion fails
+    }
+
+    // Delete from database
     products.splice(productIndex, 1)
     await writeFile(PRODUCTS_FILE, JSON.stringify(products, null, 2), 'utf-8')
 
-    return NextResponse.json({ success: true, message: 'Product deleted successfully' })
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Product and associated files deleted successfully' 
+    })
   } catch (error) {
     console.error('Error deleting product:', error)
     return NextResponse.json(

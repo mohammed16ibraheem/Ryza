@@ -81,7 +81,7 @@ export default function Header() {
               {/* Text Over Logo */}
               <span className="relative text-xl sm:text-2xl md:text-3xl font-bold text-primary-600 z-10">
                 Ryza
-              </span>
+            </span>
             </div>
           </Link>
 

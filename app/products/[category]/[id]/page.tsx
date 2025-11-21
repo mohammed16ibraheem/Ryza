@@ -274,11 +274,19 @@ export default function ProductDetailPage() {
             )}
             
             {product.video && (
-              <div className="mt-4 p-4">
-                <video controls className="w-full rounded-xl">
-                  <source src={product.video} />
+              <div className="mt-4 p-4 bg-gray-50 rounded-xl">
+                <video 
+                  controls 
+                  muted
+                  playsInline
+                  className="w-full rounded-xl"
+                  preload="metadata"
+                >
+                  <source src={product.video} type="video/webm" />
+                  <source src={product.video} type="video/mp4" />
                   Your browser does not support the video tag.
                 </video>
+                <p className="text-xs text-gray-500 mt-2 text-center">Video is muted by default</p>
               </div>
             )}
           </div>

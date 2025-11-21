@@ -34,12 +34,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Category is required' }, { status: 400 })
     }
 
+    // Map category names to folder names
+    const getCategoryFolderName = (cat: string): string => {
+      const categoryMap: { [key: string]: string } = {
+        'Salah Essential': 'Salah-Essential',
+        'Hijabs': 'Hijabs',
+        'Gift Hampers': 'Gift-Hampers',
+        'Hair Essentials': 'Hair-Essentials',
+        'Hair Accessories': 'Hair-Essentials',
+        'Jewellery': 'Jewellery',
+        'Offers': 'Offers',
+        'Dresses': 'Salah-Essential',
+      }
+      return categoryMap[cat] || cat.replace(/\s+/g, '-')
+    }
+
+    // Map Hijab sub-category to folder name
+    const getHijabSubCategoryFolderName = (subCat: string): string => {
+      const subCategoryMap: { [key: string]: string } = {
+        'Hijab': 'Hijab',
+        'Accessory': 'Hijab-Essentials',
+        'Luxury': 'Luxury-Hijabs',
+        'Day to Day Life': 'Day-to-Day-Life',
+      }
+      return subCategoryMap[subCat] || subCat.replace(/\s+/g, '-')
+    }
+
     // Generate folder path
     const basePath = path.join(process.cwd(), 'public', 'images')
-    let folderPath = path.join(basePath, category.replace(/\s+/g, '-'))
+    const categoryFolder = getCategoryFolderName(category)
+    let folderPath = path.join(basePath, categoryFolder)
     
     if (category === 'Hijabs' && subCategory) {
-      folderPath = path.join(folderPath, subCategory.replace(/\s+/g, '-'))
+      const subFolder = getHijabSubCategoryFolderName(subCategory)
+      folderPath = path.join(folderPath, subFolder)
     }
 
     // Create folder if it doesn't exist
@@ -64,7 +92,7 @@ export async function POST(request: NextRequest) {
       await writeFile(filePath, buffer)
       
       // Return relative path for frontend
-      const relativePath = `/images/${category.replace(/\s+/g, '-')}${subCategory ? `/${subCategory.replace(/\s+/g, '-')}` : ''}/${fileName}`
+      const relativePath = `/images/${categoryFolder}${subCategory && category === 'Hijabs' ? `/${getHijabSubCategoryFolderName(subCategory)}` : ''}/${fileName}`
       uploadedFiles.push(relativePath)
     }
 

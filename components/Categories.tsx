@@ -5,8 +5,8 @@ import { FiArrowRight } from 'react-icons/fi'
 
 const categories = [
   {
-    name: 'Dresses',
-    href: '/products/dresses',
+    name: 'Salah Essential',
+    href: '/products/salah-essential',
     image: '/placeholder-category.jpg',
     description: 'Modest dresses',
   },
@@ -23,10 +23,16 @@ const categories = [
     description: 'Beautiful gift hampers with books, flowers & more',
   },
   {
-    name: 'Hair Accessories',
-    href: '/products/hair-accessories',
+    name: 'Hair Essentials',
+    href: '/products/hair-essentials',
     image: '/placeholder-category.jpg',
     description: 'Complete your look',
+  },
+  {
+    name: 'Jewellery',
+    href: '/products/jewellery',
+    image: '/placeholder-category.jpg',
+    description: 'Elegant jewellery collection',
   },
   {
     name: 'Offers',
