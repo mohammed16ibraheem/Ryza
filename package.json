@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@types/multer": "^2.0.0",
+    "@vercel/blob": "^2.0.0",
     "browser-image-compression": "^2.0.2",
     "multer": "^2.0.2",
     "next": "14.0.4",

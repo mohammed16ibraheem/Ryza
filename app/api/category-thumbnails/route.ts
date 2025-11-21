@@ -1,39 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, readFile, mkdir, unlink } from 'fs/promises'
+import { readFile, writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
+import { put, del } from '@vercel/blob'
 
 // Database file for category thumbnails
 const THUMBNAILS_DB_FILE = path.join(process.cwd(), 'data', 'category-thumbnails.json')
-// Storage directory for category thumbnail images
-const THUMBNAILS_STORAGE_DIR = path.join(process.cwd(), 'public', 'images', 'category-thumbnails')
 
-// Check if running on Vercel (serverless environment)
-const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL_ENV
-
-// Ensure directories exist
-async function ensureDirs() {
-  if (isVercel) return
-  
+// Ensure data directory exists (for local JSON storage)
+async function ensureDataDir() {
   try {
     const dataDir = path.join(process.cwd(), 'data')
     if (!existsSync(dataDir)) {
       await mkdir(dataDir, { recursive: true })
     }
-    
-    if (!existsSync(THUMBNAILS_STORAGE_DIR)) {
-      await mkdir(THUMBNAILS_STORAGE_DIR, { recursive: true })
-    }
   } catch (error) {
-    if (isVercel) return
-    throw error
+    // Ignore errors
   }
 }
 
 // GET - Fetch all category thumbnails
 export async function GET() {
   try {
-    await ensureDirs()
+    await ensureDataDir()
     
     // Read from database
     if (!existsSync(THUMBNAILS_DB_FILE)) {
@@ -52,19 +41,8 @@ export async function GET() {
 
 // POST - Save category thumbnail
 export async function POST(request: NextRequest) {
-  if (isVercel) {
-    return NextResponse.json(
-      { 
-        error: 'File storage not available on Vercel', 
-        message: 'Category thumbnail uploads require cloud storage. Please migrate to Vercel Blob, Cloudinary, or AWS S3.',
-        vercel: true
-      },
-      { status: 503 }
-    )
-  }
-
   try {
-    await ensureDirs()
+    await ensureDataDir()
     
     const formData = await request.formData()
     const category = formData.get('category') as string
@@ -72,6 +50,15 @@ export async function POST(request: NextRequest) {
 
     if (!category || !file) {
       return NextResponse.json({ error: 'Category and file are required' }, { status: 400 })
+    }
+
+    // Check for Blob token
+    const token = process.env.BLOB_READ_WRITE_TOKEN
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Blob storage not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.' },
+        { status: 500 }
+      )
     }
 
     // Validate category
@@ -88,24 +75,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     }
 
-    // Save file
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    
-    // Generate unique filename with category key
+    // Generate unique filename
     const timestamp = Date.now()
     const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
     const fileExtension = path.extname(originalName)
     const baseName = path.basename(originalName, fileExtension)
     const fileName = `${category}_${timestamp}_${baseName}${fileExtension}`
-    const filePath = path.join(THUMBNAILS_STORAGE_DIR, fileName)
-    
-    // Save image file to storage
-    await writeFile(filePath, buffer)
-    
-    // Database entry: relative path from public folder
-    const relativePath = `/images/category-thumbnails/${fileName}`
-    
+    const blobPath = `images/category-thumbnails/${fileName}`
+
+    // Upload to Vercel Blob
+    const blob = await put(blobPath, file, {
+      access: 'public',
+      token,
+    })
+
     // Read existing database
     let thumbnails: { [key: string]: string } = {}
     if (existsSync(THUMBNAILS_DB_FILE)) {
@@ -113,28 +96,30 @@ export async function POST(request: NextRequest) {
       thumbnails = JSON.parse(fileContent)
     }
     
-    // Delete old thumbnail file if exists (to save space)
+    // Delete old thumbnail from Blob if exists (to save space)
     if (thumbnails[category]) {
-      const oldFilePath = path.join(process.cwd(), 'public', thumbnails[category])
-      if (existsSync(oldFilePath)) {
-        try {
-          await unlink(oldFilePath)
-        } catch (err) {
-          // Ignore errors when deleting old file
-          console.warn('Could not delete old thumbnail:', err)
-        }
+      try {
+        // Extract blob path from URL
+        const oldUrl = thumbnails[category]
+        // Vercel Blob URLs are in format: https://[hash].public.blob.vercel-storage.com/[path]
+        // We need to extract the path or use the URL directly
+        // For now, we'll try to delete using the URL
+        await del(oldUrl, { token })
+      } catch (err) {
+        // Ignore errors when deleting old file
+        console.warn('Could not delete old thumbnail from Blob:', err)
       }
     }
     
-    // Update database with new thumbnail path
-    thumbnails[category] = relativePath
+    // Update database with new thumbnail URL
+    thumbnails[category] = blob.url
     
     // Save to database
     await writeFile(THUMBNAILS_DB_FILE, JSON.stringify(thumbnails, null, 2), 'utf-8')
 
     return NextResponse.json({
       success: true,
-      thumbnail: relativePath,
+      thumbnail: blob.url,
       category
     })
   } catch (error) {
@@ -148,25 +133,23 @@ export async function POST(request: NextRequest) {
 
 // DELETE - Delete a category thumbnail
 export async function DELETE(request: NextRequest) {
-  if (isVercel) {
-    return NextResponse.json(
-      { 
-        error: 'File storage not available on Vercel', 
-        message: 'Category thumbnail deletion requires cloud storage.',
-        vercel: true
-      },
-      { status: 503 }
-    )
-  }
-
   try {
-    await ensureDirs()
+    await ensureDataDir()
     
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
 
     if (!category) {
       return NextResponse.json({ error: 'Category is required' }, { status: 400 })
+    }
+
+    // Check for Blob token
+    const token = process.env.BLOB_READ_WRITE_TOKEN
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Blob storage not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.' },
+        { status: 500 }
+      )
     }
 
     // Validate category
@@ -195,14 +178,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Thumbnail not found for this category' }, { status: 404 })
     }
 
-    // Delete image file
-    const imagePath = path.join(process.cwd(), 'public', thumbnails[category])
-    if (existsSync(imagePath)) {
-      try {
-        await unlink(imagePath)
-      } catch (err) {
-        console.warn('Could not delete thumbnail file:', err)
-      }
+    // Delete from Vercel Blob
+    try {
+      await del(thumbnails[category], { token })
+    } catch (err) {
+      console.warn('Could not delete thumbnail from Blob:', err)
+      // Continue with database deletion even if Blob deletion fails
     }
 
     // Remove from database
@@ -221,4 +202,3 @@ export async function DELETE(request: NextRequest) {
     )
   }
 }
-

@@ -1,54 +1,196 @@
-note now we move the versal section no need of that we are going to deploy it in firebase section hosting login upload storage got it if the code is versal reoe and install firebase  "Add Firebase SDK
+# Ryza E-commerce Platform
 
-Use npm
+A modern, full-featured e-commerce platform built with Next.js 14, TypeScript, and Tailwind CSS, optimized for Vercel deployment with Vercel Blob storage.
 
-Use a <script> tag
-If you're already using npm and a module bundler such as webpack or Rollup, you can run the following command to install the latest SDK (Learn more):
+## Features
 
-npm install firebase
-Then, initialize Firebase and begin using the SDKs for the products you'd like to use.
+- 🛍️ **Product Management**: Upload products with images, videos, and color variants
+- 📱 **Responsive Design**: Beautiful UI for both web and mobile
+- 🎨 **Category Management**: Organize products by categories with custom thumbnails
+- 🖼️ **Image Compression**: Automatic client-side image compression for fast loading
+- 🎥 **Video Support**: Video uploads with automatic trimming and compression
+- 🛒 **Shopping Cart**: Client-side cart management
+- 🔍 **Product Filtering**: Filter by category and sub-category
+- 📦 **Vercel Blob Storage**: Cloud storage for images and videos
 
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+## Tech Stack
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyC_EPLebRV3hFUAH6VKXVd_OCnrhfbtsUA",
-  authDomain: "ryza-42582.firebaseapp.com",
-  projectId: "ryza-42582",
-  storageBucket: "ryza-42582.firebasestorage.app",
-  messagingSenderId: "694602123444",
-  appId: "1:694602123444:web:f92f4a32893c8e01196fe1",
-  measurementId: "G-CZ9E21Z9P6"
-};
+- **Framework**: Next.js 14
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Storage**: Vercel Blob (for images/videos)
+- **Data**: JSON files (for product metadata)
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);   "Install Firebase CLI
-To host your site with Firebase Hosting, you need the Firebase CLI (a command line tool).
+## Setup Instructions
 
-Run the following npm command to install the CLI or update to the latest CLI version.
+### 1. Install Dependencies
 
-npm install -g firebase-tools
-Doesn't work? Take a look at the Firebase CLI reference or change your npm permissions
-4
-Deploy to Firebase Hosting
-You can deploy now or later. To deploy now, open a terminal window, then navigate to or create a root directory for your web app.
+```bash
+npm install
+```
 
-Sign in to Google
-firebase login
-Initiate your project
-Run this command from your app's root directory:
+### 2. Set Up Vercel Blob Storage
 
-firebase init
-When you're ready, deploy your web app
-Put your static files (e.g., HTML, CSS, JS) in your app's deploy directory (the default is "public"). Then, run this command from your app's root directory:
+1. Go to your Vercel project dashboard
+2. Navigate to **Storage** → **Create Database/Store**
+3. Select **Blob**
+4. Configure:
+   - **Store Name**: `ryza-blob` (or your preferred name)
+   - **Region**: Choose your preferred region (e.g., Mumbai, India)
+   - **Environments**: Select Development, Preview, and Production
+   - **Custom Prefix**: `BLOB` (optional)
 
-firebase deploy
-After deploying, view your app at ryza-42582.web.app
+5. Vercel will automatically create the `BLOB_READ_WRITE_TOKEN` environment variable
 
-Need help? Check out the Hosting docs
+### 3. Environment Variables
+
+The `BLOB_READ_WRITE_TOKEN` environment variable is automatically set by Vercel when you connect the Blob store to your project. No manual configuration needed!
+
+### 4. Run Development Server
+
+```bash
+npm run dev
+```
+
+Visit `http://localhost:3000` to see your application.
+
+### 5. Deploy to Vercel
+
+1. Push your code to GitHub/GitLab/Bitbucket
+2. Import your repository in Vercel
+3. Vercel will automatically:
+   - Detect Next.js
+   - Install dependencies
+   - Build your application
+   - Deploy to production
+
+## Project Structure
+
+```
+desing/
+├── app/
+│   ├── admin/              # Admin panel for product management
+│   ├── api/                # API routes
+│   │   ├── upload/         # Image upload endpoint
+│   │   ├── upload-video/   # Video upload endpoint
+│   │   ├── products/      # Product CRUD operations
+│   │   └── category-thumbnails/  # Category thumbnail management
+│   ├── products/           # Product listing and detail pages
+│   ├── cart/               # Shopping cart page
+│   └── ...
+├── components/             # React components
+├── lib/                    # Utility functions
+│   └── compression.ts     # Image/video compression utilities
+├── data/                   # JSON data files (product metadata)
+└── public/                 # Static assets
+```
+
+## Admin Panel
+
+Access the admin panel at `/admin` to:
+- Upload products with images and videos
+- Manage product details (name, price, description)
+- Organize products by category
+- Upload category thumbnails
+- Delete products (automatically removes files from Blob)
+
+## Storage Details
+
+### Vercel Blob Storage
+
+- **Free Tier**: 1 GB storage, 100 GB bandwidth/month
+- **Files Stored**: Images and videos are stored in Vercel Blob
+- **Organization**: Files are organized by category and sub-category
+- **URLs**: Blob URLs are automatically generated and stored in product data
+
+### File Organization
+
+```
+images/
+├── Salah-Essential/
+├── Hijabs/
+│   ├── Hijab-Essentials/
+│   ├── Luxury-Hijabs/
+│   └── Day-to-Day-Life/
+├── Gift-Hampers/
+├── Hair-Essentials/
+├── Jewellery/
+├── Offers/
+└── category-thumbnails/
+```
+
+## Features in Detail
+
+### Image Compression
+- Automatic client-side compression before upload
+- Max size: 500KB per image
+- Max dimensions: 1200x1200px
+- Format: JPEG with 80% quality
+
+### Video Compression
+- Automatic trimming to 1 minute maximum
+- Resolution: Max 1280x720px
+- Bitrate: Optimized for web
+- Format: WebM
+
+### Product Management
+- Up to 4 images per product (1 thumbnail + 3 product images)
+- 1 video per product
+- Color variants with separate images
+- Out-of-stock image marking
+- Category and sub-category organization
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. **Connect Repository**: Link your Git repository to Vercel
+2. **Configure Project**: Vercel auto-detects Next.js settings
+3. **Connect Blob Store**: Link your Blob store in project settings
+4. **Deploy**: Automatic deployment on every push
+
+### Environment Variables
+
+Vercel automatically manages:
+- `BLOB_READ_WRITE_TOKEN` - Set when Blob store is connected
+
+## Free Tier Limits
+
+### Vercel Blob
+- **Storage**: 1 GB
+- **Bandwidth**: 100 GB/month
+- **Perfect for**: Small to medium e-commerce sites
+
+### Vercel Hosting
+- **Bandwidth**: 100 GB/month
+- **Builds**: Unlimited
+- **Functions**: 100 GB-hours/month
+
+## Troubleshooting
+
+### Upload Fails
+- Check that `BLOB_READ_WRITE_TOKEN` is set in Vercel environment variables
+- Verify Blob store is connected to your project
+- Check Vercel dashboard for storage usage
+
+### Images Not Displaying
+- Verify Blob URLs are correctly stored in product data
+- Check browser console for CORS or loading errors
+- Ensure Blob store is accessible (public access enabled)
+
+### Build Errors
+- Run `npm install` to ensure all dependencies are installed
+- Check TypeScript errors: `npm run build`
+- Verify all environment variables are set
+
+## Support
+
+For issues or questions:
+1. Check Vercel dashboard for storage usage and errors
+2. Review API route logs in Vercel dashboard
+3. Check browser console for client-side errors
+
+## License
+
+Private project - All rights reserved
+

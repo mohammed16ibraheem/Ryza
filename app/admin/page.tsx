@@ -8,9 +8,8 @@ import { compressImage, compressImages, compressVideo } from '@/lib/compression'
 const PRODUCT_CATEGORIES = [
   'Salah Essential',
   'Hijabs',
-  'Accessories',
   'Gift Hampers',
-  'Hair Accessories',
+  'Hair Essentials',
   'Jewellery',
   'Offers',
 ]
@@ -99,7 +98,6 @@ export default function AdminPanel() {
   const [uploadStatus, setUploadStatus] = useState<string>('')
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
-  const [isVercel, setIsVercel] = useState(false)
   
   // Color variants state
   const [colorVariants, setColorVariants] = useState<Array<{color: string, imageFiles: File[], imagePreviews: string[], uploadedImages: string[]}>>([])
@@ -108,28 +106,6 @@ export default function AdminPanel() {
   // Category thumbnails state
   const [categoryThumbnails, setCategoryThumbnails] = useState<{ [key: string]: string }>({})
   const [uploadingThumbnail, setUploadingThumbnail] = useState<string | null>(null)
-
-  // Check if running on Vercel
-  useEffect(() => {
-    // Check Vercel environment by testing API
-    const checkVercel = async () => {
-      try {
-        // Try a test POST to see if we get Vercel error
-        const testResponse = await fetch('/api/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ test: true }),
-        })
-        const testData = await testResponse.json().catch(() => ({}))
-        if (testData.vercel) {
-          setIsVercel(true)
-        }
-      } catch (error) {
-        // Ignore errors
-      }
-    }
-    checkVercel()
-  }, [])
 
   // Fetch category thumbnails
   useEffect(() => {
@@ -313,9 +289,6 @@ export default function AdminPanel() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        if (errorData.vercel) {
-          throw new Error('Product deletion is not available on Vercel. Please migrate to a database.')
-        }
         throw new Error(errorData.message || 'Failed to delete product')
       }
 
@@ -417,10 +390,7 @@ export default function AdminPanel() {
 
         if (!imageResponse.ok) {
           const errorData = await imageResponse.json().catch(() => ({}))
-          if (errorData.vercel) {
-            throw new Error('Image uploads are not available on Vercel. Please migrate to cloud storage (Vercel Blob, Cloudinary, etc.)')
-          }
-          throw new Error(errorData.message || 'Failed to upload images')
+          throw new Error(errorData.message || errorData.error || 'Failed to upload images')
         }
 
         const imageData = await imageResponse.json()
@@ -456,9 +426,7 @@ export default function AdminPanel() {
             })
           } else {
             const errorData = await colorResponse.json().catch(() => ({}))
-            if (errorData.vercel) {
-              console.warn('Color variant image upload failed on Vercel:', errorData.message)
-            }
+            console.warn('Color variant image upload failed:', errorData.message || errorData.error)
           }
         } else if (variant.uploadedImages.length > 0) {
           // Already uploaded images (when editing)
@@ -490,9 +458,7 @@ export default function AdminPanel() {
           uploadedVideo = videoData.video
         } else {
           const errorData = await videoResponse.json().catch(() => ({}))
-          if (errorData.vercel) {
-            console.warn('Video upload failed on Vercel:', errorData.message)
-          }
+          console.warn('Video upload failed:', errorData.message || errorData.error)
         }
       }
 
@@ -526,10 +492,7 @@ export default function AdminPanel() {
 
       if (!saveResponse.ok) {
         const errorData = await saveResponse.json().catch(() => ({}))
-        if (errorData.vercel) {
-          throw new Error('Product uploads are not available on Vercel. Please migrate to a database (Vercel Postgres, MongoDB, etc.)')
-        }
-        throw new Error(errorData.message || 'Failed to save product to database')
+        throw new Error(errorData.message || errorData.error || 'Failed to save product to database')
       }
 
       // Refresh products from API
@@ -600,10 +563,7 @@ export default function AdminPanel() {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        if (errorData.vercel) {
-          throw new Error('Category thumbnail uploads are not available on Vercel. Please migrate to cloud storage.')
-        }
-        throw new Error(errorData.message || 'Failed to upload thumbnail')
+        throw new Error(errorData.message || errorData.error || 'Failed to upload thumbnail')
       }
       
       const data = await response.json()
@@ -634,28 +594,6 @@ export default function AdminPanel() {
   return (
     <div className="min-h-screen bg-gray-50 py-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        {/* Vercel Notice Banner */}
-        {isVercel && (
-          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0">
-                <svg className="w-6 h-6 text-amber-600 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-lg text-amber-900 mb-2">⚠️ Running on Vercel (Serverless)</h3>
-                <p className="text-amber-800 mb-2">
-                  Product uploads and image storage are not available on Vercel's serverless platform. The file system is read-only.
-                </p>
-                <p className="text-sm text-amber-700">
-                  <strong>To enable uploads:</strong> Migrate to a database (Vercel Postgres, MongoDB, Supabase) and cloud storage (Vercel Blob, Cloudinary, AWS S3).
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-        
         <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
             <div>
@@ -671,7 +609,7 @@ export default function AdminPanel() {
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-500">
               <FiCheckCircle className="text-primary-600" />
-              <span>Files are uploaded to server and organized by category.</span>
+              <span>Files are uploaded to Vercel Blob storage and organized by category.</span>
             </div>
           </div>
 

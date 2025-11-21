@@ -1,24 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
-
-// Check if running on Vercel (serverless environment)
-const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL_ENV
+import { put } from '@vercel/blob'
 
 export async function POST(request: NextRequest) {
-  // On Vercel, file system is read-only - return helpful error
-  if (isVercel) {
-    return NextResponse.json(
-      { 
-        error: 'File storage not available on Vercel', 
-        message: 'Video uploads require cloud storage. Please migrate to Vercel Blob, Cloudinary, or AWS S3.',
-        vercel: true
-      },
-      { status: 503 }
-    )
-  }
-
   try {
     const formData = await request.formData()
     const file = formData.get('video') as File
@@ -32,6 +15,15 @@ export async function POST(request: NextRequest) {
 
     if (!category) {
       return NextResponse.json({ error: 'Category is required' }, { status: 400 })
+    }
+
+    // Check for Blob token
+    const token = process.env.BLOB_READ_WRITE_TOKEN
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Blob storage not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.' },
+        { status: 500 }
+      )
     }
 
     // Map category names to folder names
@@ -60,39 +52,31 @@ export async function POST(request: NextRequest) {
       return subCategoryMap[subCat] || subCat.replace(/\s+/g, '-')
     }
 
-    // Generate folder path
-    const basePath = path.join(process.cwd(), 'public', 'images')
+    // Generate folder path for Blob storage
     const categoryFolder = getCategoryFolderName(category)
-    let folderPath = path.join(basePath, categoryFolder)
+    let blobPath = `images/${categoryFolder}`
     
     if (category === 'Hijabs' && subCategory) {
       const subFolder = getHijabSubCategoryFolderName(subCategory)
-      folderPath = path.join(folderPath, subFolder)
+      blobPath = `${blobPath}/${subFolder}`
     }
-
-    // Create folder if it doesn't exist
-    if (!existsSync(folderPath)) {
-      await mkdir(folderPath, { recursive: true })
-    }
-
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
 
     // Generate unique filename
     const timestamp = Date.now()
     const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
     const fileName = `${productId}_${timestamp}_video_${originalName}`
-    const filePath = path.join(folderPath, fileName)
+    const fullPath = `${blobPath}/${fileName}`
 
-    await writeFile(filePath, buffer)
-    
-    // Return relative path for frontend
-    const relativePath = `/images/${categoryFolder}${subCategory && category === 'Hijabs' ? `/${getHijabSubCategoryFolderName(subCategory)}` : ''}/${fileName}`
+    // Upload to Vercel Blob
+    const blob = await put(fullPath, file, {
+      access: 'public',
+      token,
+    })
 
     return NextResponse.json({
       success: true,
-      video: relativePath,
-      folderPath: folderPath.replace(process.cwd(), ''),
+      video: blob.url,
+      folderPath: blobPath,
     })
   } catch (error) {
     console.error('Video upload error:', error)
@@ -102,4 +86,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

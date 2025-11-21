@@ -1,30 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, readFile, mkdir, unlink, rmdir } from 'fs/promises'
-import { existsSync, readdirSync, statSync } from 'fs'
+import { writeFile, readFile, mkdir } from 'fs/promises'
+import { existsSync } from 'fs'
 import path from 'path'
+import { del } from '@vercel/blob'
 
 const PRODUCTS_FILE = path.join(process.cwd(), 'data', 'products.json')
 
-// Check if running on Vercel (serverless environment)
-const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL_ENV
-
 // Ensure data directory exists
 async function ensureDataDir() {
-  // On Vercel, file system is read-only, skip directory creation
-  if (isVercel) {
-    return
-  }
-  
   try {
     const dataDir = path.join(process.cwd(), 'data')
     if (!existsSync(dataDir)) {
       await mkdir(dataDir, { recursive: true })
     }
   } catch (error) {
-    // Silently fail on Vercel
-    if (isVercel) return
-    throw error
+    // Silently fail
   }
+}
+
+// Check if URL is a Vercel Blob URL
+function isBlobUrl(url: string): boolean {
+  return url.includes('blob.vercel-storage.com') || url.includes('public.blob.vercel-storage.com')
 }
 
 // GET - Fetch all products or filter by category
@@ -74,18 +70,6 @@ export async function GET(request: NextRequest) {
 
 // POST - Save a new product
 export async function POST(request: NextRequest) {
-  // On Vercel, file system is read-only - return helpful error
-  if (isVercel) {
-    return NextResponse.json(
-      { 
-        error: 'File storage not available on Vercel', 
-        message: 'Product uploads require a database. Please migrate to Vercel Postgres, MongoDB, or another database service.',
-        vercel: true
-      },
-      { status: 503 }
-    )
-  }
-
   try {
     await ensureDataDir()
     
@@ -120,18 +104,6 @@ export async function POST(request: NextRequest) {
 
 // DELETE - Delete a product
 export async function DELETE(request: NextRequest) {
-  // On Vercel, file system is read-only - return helpful error
-  if (isVercel) {
-    return NextResponse.json(
-      { 
-        error: 'File storage not available on Vercel', 
-        message: 'Product deletion requires a database. Please migrate to Vercel Postgres, MongoDB, or another database service.',
-        vercel: true
-      },
-      { status: 503 }
-    )
-  }
-
   try {
     await ensureDataDir()
     
@@ -157,55 +129,46 @@ export async function DELETE(request: NextRequest) {
 
     const product = products[productIndex]
     
-    // Delete all associated files
+    // Delete all associated files from Vercel Blob
     try {
-      const publicPath = path.join(process.cwd(), 'public')
+      const token = process.env.BLOB_READ_WRITE_TOKEN
       const deletedFiles: string[] = []
 
-      // Delete product images
+      // Delete product images from Blob
       if (product.images && Array.isArray(product.images)) {
-        for (const imagePath of product.images) {
-          if (imagePath && typeof imagePath === 'string') {
-            const fullPath = path.join(publicPath, imagePath)
-            if (existsSync(fullPath)) {
-              try {
-                await unlink(fullPath)
-                deletedFiles.push(imagePath)
-              } catch (err) {
-                console.error(`Error deleting image ${imagePath}:`, err)
-              }
+        for (const imageUrl of product.images) {
+          if (imageUrl && typeof imageUrl === 'string' && isBlobUrl(imageUrl)) {
+            try {
+              await del(imageUrl, { token })
+              deletedFiles.push(imageUrl)
+            } catch (err) {
+              console.error(`Error deleting image from Blob ${imageUrl}:`, err)
             }
           }
         }
       }
 
-      // Delete product video
-      if (product.video && typeof product.video === 'string') {
-        const videoPath = path.join(publicPath, product.video)
-        if (existsSync(videoPath)) {
-          try {
-            await unlink(videoPath)
-            deletedFiles.push(product.video)
-          } catch (err) {
-            console.error(`Error deleting video ${product.video}:`, err)
-          }
+      // Delete product video from Blob
+      if (product.video && typeof product.video === 'string' && isBlobUrl(product.video)) {
+        try {
+          await del(product.video, { token })
+          deletedFiles.push(product.video)
+        } catch (err) {
+          console.error(`Error deleting video from Blob ${product.video}:`, err)
         }
       }
 
-      // Delete color variant images
+      // Delete color variant images from Blob
       if (product.colorVariants && Array.isArray(product.colorVariants)) {
         for (const variant of product.colorVariants) {
           if (variant.images && Array.isArray(variant.images)) {
-            for (const imagePath of variant.images) {
-              if (imagePath && typeof imagePath === 'string') {
-                const fullPath = path.join(publicPath, imagePath)
-                if (existsSync(fullPath)) {
-                  try {
-                    await unlink(fullPath)
-                    deletedFiles.push(imagePath)
-                  } catch (err) {
-                    console.error(`Error deleting color variant image ${imagePath}:`, err)
-                  }
+            for (const imageUrl of variant.images) {
+              if (imageUrl && typeof imageUrl === 'string' && isBlobUrl(imageUrl)) {
+                try {
+                  await del(imageUrl, { token })
+                  deletedFiles.push(imageUrl)
+                } catch (err) {
+                  console.error(`Error deleting color variant image from Blob ${imageUrl}:`, err)
                 }
               }
             }
@@ -213,42 +176,9 @@ export async function DELETE(request: NextRequest) {
         }
       }
 
-      // Helper function to recursively delete empty folders
-      const deleteEmptyFolders = async (dirPath: string): Promise<void> => {
-        try {
-          if (!existsSync(dirPath)) return
-          
-          const files = readdirSync(dirPath)
-          
-          // If folder is empty, try to delete it
-          if (files.length === 0) {
-            try {
-              await rmdir(dirPath)
-              console.log(`Deleted empty folder: ${dirPath}`)
-              
-              // Try to delete parent folder if it becomes empty
-              const parentDir = path.dirname(dirPath)
-              if (parentDir !== publicPath && parentDir !== path.join(publicPath, 'images')) {
-                await deleteEmptyFolders(parentDir)
-              }
-            } catch (err) {
-              // Folder might not be empty or permission issue, ignore
-            }
-          }
-        } catch (err) {
-          // Ignore errors for folder deletion
-        }
-      }
-
-      // Try to delete the product's folder if it's empty
-      if (product.folderPath) {
-        const folderPath = path.join(publicPath, product.folderPath)
-        await deleteEmptyFolders(folderPath)
-      }
-
-      console.log(`Deleted ${deletedFiles.length} files for product ${productId}`)
+      console.log(`Deleted ${deletedFiles.length} files from Blob for product ${productId}`)
     } catch (fileError) {
-      console.error('Error deleting product files:', fileError)
+      console.error('Error deleting product files from Blob:', fileError)
       // Continue with database deletion even if file deletion fails
     }
 
