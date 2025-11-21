@@ -5,11 +5,25 @@ import path from 'path'
 
 const PRODUCTS_FILE = path.join(process.cwd(), 'data', 'products.json')
 
+// Check if running on Vercel (serverless environment)
+const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL_ENV
+
 // Ensure data directory exists
 async function ensureDataDir() {
-  const dataDir = path.join(process.cwd(), 'data')
-  if (!existsSync(dataDir)) {
-    await mkdir(dataDir, { recursive: true })
+  // On Vercel, file system is read-only, skip directory creation
+  if (isVercel) {
+    return
+  }
+  
+  try {
+    const dataDir = path.join(process.cwd(), 'data')
+    if (!existsSync(dataDir)) {
+      await mkdir(dataDir, { recursive: true })
+    }
+  } catch (error) {
+    // Silently fail on Vercel
+    if (isVercel) return
+    throw error
   }
 }
 
@@ -54,6 +68,18 @@ export async function GET(request: NextRequest) {
 
 // POST - Save a new product
 export async function POST(request: NextRequest) {
+  // On Vercel, file system is read-only - return helpful error
+  if (isVercel) {
+    return NextResponse.json(
+      { 
+        error: 'File storage not available on Vercel', 
+        message: 'Product uploads require a database. Please migrate to Vercel Postgres, MongoDB, or another database service.',
+        vercel: true
+      },
+      { status: 503 }
+    )
+  }
+
   try {
     await ensureDataDir()
     
@@ -88,6 +114,18 @@ export async function POST(request: NextRequest) {
 
 // DELETE - Delete a product
 export async function DELETE(request: NextRequest) {
+  // On Vercel, file system is read-only - return helpful error
+  if (isVercel) {
+    return NextResponse.json(
+      { 
+        error: 'File storage not available on Vercel', 
+        message: 'Product deletion requires a database. Please migrate to Vercel Postgres, MongoDB, or another database service.',
+        vercel: true
+      },
+      { status: 503 }
+    )
+  }
+
   try {
     await ensureDataDir()
     

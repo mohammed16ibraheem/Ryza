@@ -13,7 +13,7 @@ const openSans = Open_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'The Ryza - Modest Ladies Fashion & Accessories',
+  title: 'Ryza - Modest Ladies Fashion & Accessories',
   description: 'Discover beautiful ladies dresses, hijabs, gift hampers, and hair accessories. Modest fashion for the modern Muslim woman.',
   appleWebApp: {
     capable: true,

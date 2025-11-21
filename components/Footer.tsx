@@ -8,7 +8,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10">
           {/* About */}
           <div className="space-y-4">
-            <h3 className="text-white text-xl font-bold mb-4">The Ryza</h3>
+            <h3 className="text-white text-xl font-bold mb-4">Ryza</h3>
             <p className="text-sm leading-relaxed">
               Your destination for modest ladies fashion and beautiful accessories. 
               Celebrating Muslim culture with style and grace.
@@ -140,7 +140,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-gray-800 mt-10 pt-8 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} The Ryza. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Ryza. All rights reserved.</p>
         </div>
       </div>
     </footer>

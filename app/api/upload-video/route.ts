@@ -3,7 +3,22 @@ import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import path from 'path'
 
+// Check if running on Vercel (serverless environment)
+const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL_ENV
+
 export async function POST(request: NextRequest) {
+  // On Vercel, file system is read-only - return helpful error
+  if (isVercel) {
+    return NextResponse.json(
+      { 
+        error: 'File storage not available on Vercel', 
+        message: 'Video uploads require cloud storage. Please migrate to Vercel Blob, Cloudinary, or AWS S3.',
+        vercel: true
+      },
+      { status: 503 }
+    )
+  }
+
   try {
     const formData = await request.formData()
     const file = formData.get('video') as File

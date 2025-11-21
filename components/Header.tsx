@@ -62,7 +62,7 @@ export default function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 touch-manipulation">
             <span className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-600">
-              The Ryza
+              Ryza
             </span>
           </Link>
 
@@ -104,15 +104,15 @@ export default function Header() {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
                           </Link>
-                          <Link
+                        <Link
                             href="/products/hijabs?type=day-to-day"
                             className="flex items-center px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary-600 rounded-md transition-all duration-150 font-medium"
-                          >
+                        >
                             <span className="flex-1">Day to Day Life</span>
                             <svg className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
-                          </Link>
+                        </Link>
                         </div>
                       </div>
                     )}
@@ -190,13 +190,13 @@ export default function Header() {
                       >
                         {link.name}
                       </Link>
-                      <button
-                        onClick={() => setIsHijabsDropdownOpen(!isHijabsDropdownOpen)}
+                    <button
+                      onClick={() => setIsHijabsDropdownOpen(!isHijabsDropdownOpen)}
                         className="p-2 -mr-2 text-gray-500 hover:text-primary-600 transition-all duration-200 rounded-md hover:bg-gray-50"
                         aria-label="Toggle dropdown"
-                      >
+                    >
                         <FiChevronDown className={`w-5 h-5 transition-transform duration-200 ${isHijabsDropdownOpen ? 'rotate-180 text-primary-600' : ''}`} />
-                      </button>
+                    </button>
                     </div>
                     {isHijabsDropdownOpen && (
                       <div className="pl-4 mt-2 space-y-1 animate-fade-in-dropdown">
