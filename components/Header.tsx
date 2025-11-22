@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { FiMenu, FiX, FiShoppingCart, FiSearch, FiUser, FiChevronDown, FiX as FiClose } from 'react-icons/fi'
+import { FiMenu, FiX, FiShoppingCart, FiSearch, FiChevronDown, FiX as FiClose } from 'react-icons/fi'
 
 interface Product {
   id: string
@@ -195,13 +195,13 @@ export default function Header() {
         />
       )}
 
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled
-            ? 'bg-white shadow-md'
-            : 'bg-white/95 backdrop-blur-sm'
-        }`}
-      >
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled
+          ? 'bg-white shadow-md'
+          : 'bg-white/95 backdrop-blur-sm'
+      }`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
@@ -416,7 +416,7 @@ export default function Header() {
                                 </svg>
                               </div>
                             </div>
-                          </button>
+            </button>
                         ))}
                       </div>
                     )}
@@ -436,12 +436,6 @@ export default function Header() {
                 </span>
               )}
             </Link>
-            <button 
-              className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
-              aria-label="User Account"
-            >
-              <FiUser className="w-5 h-5 sm:w-6 sm:h-6" />
-            </button>
 
             {/* Mobile Menu Button */}
             <button

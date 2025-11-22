@@ -251,12 +251,76 @@ export default function ProductDetailPage() {
                       <button
                         key={index}
                         onClick={() => setCurrentImageIndex(index)}
-                        className={`h-2 rounded-full transition-all ${
-                          index === currentImageIndex ? 'bg-primary-600 w-8' : 'bg-gray-300 w-2'
+                        className={`h-1.5 sm:h-2 rounded-full transition-all ${
+                          index === currentImageIndex ? 'bg-primary-600 w-8' : 'bg-gray-300 w-1.5 sm:w-2'
                         }`}
                         aria-label={`Go to image ${index + 1}`}
                       />
                     ))}
+                  </div>
+                )}
+                
+                {/* Color Swatches - Classic Small Dots */}
+                {product.imageColors && product.imageColors.length > 0 && (
+                  <div className="flex justify-center items-center gap-2.5 sm:gap-3 px-4 pb-4">
+                    {product.imageColors.map((colorName, index) => {
+                      // Extract color from color name or use a default
+                      const getColorFromName = (name: string): string => {
+                        const colorMap: { [key: string]: string } = {
+                          'black': '#000000',
+                          'blue': '#3B82F6',
+                          'brown': '#8B4513',
+                          'green': '#10B981',
+                          'red': '#EF4444',
+                          'white': '#FFFFFF',
+                          'gray': '#6B7280',
+                          'grey': '#6B7280',
+                          'purple': '#92487A',
+                          'pink': '#EC4899',
+                          'yellow': '#FBBF24',
+                          'orange': '#F97316',
+                          'navy': '#1E3A8A',
+                          'beige': '#F5F5DC',
+                          'light': '#F3F4F6',
+                          'dark': '#1F2937',
+                        }
+                        
+                        const lowerName = name.toLowerCase()
+                        for (const [key, value] of Object.entries(colorMap)) {
+                          if (lowerName.includes(key)) {
+                            return value
+                          }
+                        }
+                        return '#92487A' // Default to primary color
+                      }
+                      
+                      const colorValue = getColorFromName(colorName)
+                      const isActive = index === currentImageIndex
+                      
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentImageIndex(index)}
+                          className={`relative transition-all duration-200 ${
+                            isActive ? 'scale-110' : 'hover:scale-105'
+                          }`}
+                          aria-label={`Color: ${colorName}`}
+                          title={colorName}
+                        >
+                          <div
+                            className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full border-2 transition-all ${
+                              isActive 
+                                ? 'border-primary-600 shadow-md shadow-primary-600/50' 
+                                : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                            style={{ backgroundColor: colorValue }}
+                          />
+                          {isActive && (
+                            <div className="absolute inset-0 rounded-full border-2 border-primary-600 animate-pulse" />
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
               </div>
