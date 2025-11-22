@@ -168,7 +168,9 @@ export default function AdminPanel() {
     
     const fetchShippingSettings = async () => {
       try {
-        const response = await fetch('/api/shipping-settings')
+        const response = await fetch('/api/shipping-settings', {
+          cache: 'no-store', // Always fetch fresh data
+        })
         const data = await response.json()
         if (data.freeShippingThreshold !== undefined) {
           setShippingSettings({
@@ -687,6 +689,31 @@ export default function AdminPanel() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.error || 'Failed to save shipping settings')
+      }
+
+      // Get the saved settings from the response
+      const savedData = await response.json()
+      if (savedData.settings && savedData.settings.freeShippingThreshold !== undefined) {
+        setShippingSettings({
+          freeShippingThreshold: savedData.settings.freeShippingThreshold,
+        })
+      } else {
+        // Fallback: Refresh shipping settings after a short delay to ensure blob is written
+        setTimeout(async () => {
+          try {
+            const refreshResponse = await fetch('/api/shipping-settings', {
+              cache: 'no-store',
+            })
+            const refreshData = await refreshResponse.json()
+            if (refreshData.freeShippingThreshold !== undefined) {
+              setShippingSettings({
+                freeShippingThreshold: refreshData.freeShippingThreshold || 5000,
+              })
+            }
+          } catch (err) {
+            console.error('Error refreshing settings:', err)
+          }
+        }, 500)
       }
 
       setUploadStatus('✅ Shipping settings saved successfully!')

@@ -50,7 +50,14 @@ async function getShippingSettingsFromBlob(): Promise<{
     }
 
     const blobUrl = blobs.blobs[0].url
-    const response = await fetch(blobUrl)
+    // Add cache-busting query parameter to ensure fresh data
+    const cacheBuster = `?t=${Date.now()}`
+    const response = await fetch(`${blobUrl}${cacheBuster}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    })
 
     if (!response.ok) {
       return {
@@ -124,14 +131,28 @@ async function saveShippingSettingsToBlob(settings: {
 export async function GET() {
   try {
     const settings = await getShippingSettingsFromBlob()
-    return NextResponse.json(settings)
+    // Add cache headers to prevent caching of API response
+    return NextResponse.json(settings, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    })
   } catch (error) {
     console.error('Error fetching shipping settings:', error)
     return NextResponse.json(
       {
         freeShippingThreshold: 5000,
       },
-      { status: 200 }
+      { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
     )
   }
 }
@@ -163,7 +184,17 @@ export async function POST(request: NextRequest) {
 
     await saveShippingSettingsToBlob(settings)
 
-    return NextResponse.json({ success: true, settings })
+    // Return saved settings with no-cache headers
+    return NextResponse.json(
+      { success: true, settings },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error saving shipping settings:', error)
     return NextResponse.json(
