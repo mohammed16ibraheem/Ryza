@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { FiArrowRight } from 'react-icons/fi'
 
 export default function Hero() {
   return (
@@ -23,13 +22,6 @@ export default function Hero() {
             Modest fashion that celebrates your style and culture.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-            <Link
-              href="/products"
-              className="inline-flex items-center justify-center px-6 sm:px-8 py-3 bg-primary-600 text-white rounded-full font-semibold hover:bg-primary-700 transition-all transform hover:scale-105 shadow-lg touch-manipulation min-h-[44px]"
-            >
-              Shop Now
-              <FiArrowRight className="ml-2 w-5 h-5" />
-            </Link>
             <Link
               href="/products"
               className="inline-flex items-center justify-center px-6 sm:px-8 py-3 bg-white/40 border-2 border-primary-600 text-primary-800 rounded-full font-semibold hover:bg-white/50 transition-all touch-manipulation min-h-[44px]"

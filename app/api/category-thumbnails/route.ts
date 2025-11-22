@@ -9,7 +9,7 @@ async function getThumbnailsFromBlob(): Promise<{ [key: string]: string }> {
   try {
     const token = process.env.BLOB_READ_WRITE_TOKEN
     if (!token) {
-      console.warn('BLOB_READ_WRITE_TOKEN not set, returning empty thumbnails')
+      // BLOB_READ_WRITE_TOKEN not set - expected in local dev, must be set in production
       return {}
     }
 
