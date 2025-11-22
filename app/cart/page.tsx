@@ -157,23 +157,26 @@ export default function CartPage() {
                     <div className="flex items-center space-x-4">
                       <button
                         onClick={() => updateQuantity(index, item.quantity - 1)}
-                        className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors active:bg-gray-100"
+                        aria-label="Decrease quantity"
                       >
-                        <FiMinus className="w-4 h-4" />
+                        <FiMinus className="w-5 h-5 text-gray-700" />
                       </button>
                       <span className="text-lg font-semibold w-8 text-center">
                         {item.quantity}
                       </span>
                       <button
                         onClick={() => updateQuantity(index, item.quantity + 1)}
-                        className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        className="w-10 h-10 flex items-center justify-center border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors active:bg-gray-100"
+                        aria-label="Increase quantity"
                       >
-                        <FiPlus className="w-4 h-4" />
+                        <FiPlus className="w-5 h-5 text-gray-700" />
                       </button>
                     </div>
                     <button
                       onClick={() => removeItem(index)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="w-10 h-10 flex items-center justify-center text-red-600 hover:bg-red-50 rounded-lg transition-colors active:bg-red-100"
+                      aria-label="Remove item"
                     >
                       <FiTrash2 className="w-5 h-5" />
                     </button>
