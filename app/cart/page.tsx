@@ -17,6 +17,10 @@ interface CartItem {
 export default function CartPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartUpdated, setCartUpdated] = useState(0)
+  const [shippingSettings, setShippingSettings] = useState({
+    freeShippingThreshold: 5000,
+  })
+  const BASE_SHIPPING_COST = 200 // Fixed shipping cost for orders below threshold
 
   useEffect(() => {
     const loadCart = () => {
@@ -49,6 +53,31 @@ export default function CartPage() {
     window.addEventListener('cartUpdated', handleCartUpdate)
     return () => window.removeEventListener('cartUpdated', handleCartUpdate)
   }, [cartUpdated])
+
+  // Fetch shipping settings with auto-refresh
+  useEffect(() => {
+    const fetchShippingSettings = async () => {
+      try {
+        const response = await fetch('/api/shipping-settings', {
+          cache: 'no-store' // Always fetch fresh data
+        })
+        const data = await response.json()
+        if (data.freeShippingThreshold !== undefined) {
+          setShippingSettings({
+            freeShippingThreshold: data.freeShippingThreshold || 5000,
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching shipping settings:', error)
+      }
+    }
+    
+    fetchShippingSettings()
+    
+    // Refresh shipping settings every 30 seconds to catch admin updates
+    const interval = setInterval(fetchShippingSettings, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   const updateQuantity = (index: number, newQuantity: number) => {
     if (newQuantity < 1) return
@@ -83,7 +112,12 @@ export default function CartPage() {
   }
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const shipping = subtotal > 5000 ? 0 : 200
+  // If threshold is 0, free shipping for all. Otherwise, free if above threshold, else ₹200
+  const shipping = shippingSettings.freeShippingThreshold === 0
+    ? 0
+    : subtotal >= shippingSettings.freeShippingThreshold
+    ? 0
+    : BASE_SHIPPING_COST
   const total = subtotal + shipping
 
   if (cart.length === 0) {
@@ -215,9 +249,9 @@ export default function CartPage() {
                     </div>
                   )}
                 </div>
-                {subtotal < 5000 && (
+                {shippingSettings.freeShippingThreshold > 0 && subtotal < shippingSettings.freeShippingThreshold && (
                   <p className="text-sm text-primary-600">
-                    Add ₹{Math.floor(5000 - subtotal).toLocaleString('en-IN')} more for free shipping!
+                    Add ₹{Math.floor(shippingSettings.freeShippingThreshold - subtotal).toLocaleString('en-IN')} more for free shipping!
                   </p>
                 )}
                 <div className="border-t border-gray-200 pt-4">

@@ -108,6 +108,12 @@ export default function AdminPanel() {
   const [categoryThumbnails, setCategoryThumbnails] = useState<{ [key: string]: string }>({})
   const [uploadingThumbnail, setUploadingThumbnail] = useState<string | null>(null)
 
+  // Shipping settings state
+  const [shippingSettings, setShippingSettings] = useState({
+    freeShippingThreshold: 5000,
+  })
+  const [savingShippingSettings, setSavingShippingSettings] = useState(false)
+
   // Check authentication on mount - MUST be before any early returns
   useEffect(() => {
     const checkAuth = async () => {
@@ -154,6 +160,27 @@ export default function AdminPanel() {
     }
     
     fetchThumbnails()
+  }, [isAuthenticated])
+
+  // Fetch shipping settings - MUST be before any early returns
+  useEffect(() => {
+    if (isAuthenticated !== true) return // Only fetch if authenticated
+    
+    const fetchShippingSettings = async () => {
+      try {
+        const response = await fetch('/api/shipping-settings')
+        const data = await response.json()
+        if (data.freeShippingThreshold !== undefined) {
+          setShippingSettings({
+            freeShippingThreshold: data.freeShippingThreshold || 5000,
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching shipping settings:', error)
+      }
+    }
+    
+    fetchShippingSettings()
   }, [isAuthenticated])
 
   // Load products from API on mount - MUST be before any early returns
@@ -642,6 +669,34 @@ export default function AdminPanel() {
       setTimeout(() => setUploadStatus(''), 5000)
     } finally {
       setUploadingThumbnail(null)
+    }
+  }
+
+  // Handle shipping settings save
+  const handleSaveShippingSettings = async () => {
+    setSavingShippingSettings(true)
+    try {
+      const response = await fetch('/api/shipping-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(shippingSettings),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to save shipping settings')
+      }
+
+      setUploadStatus('✅ Shipping settings saved successfully!')
+      setTimeout(() => setUploadStatus(''), 3000)
+    } catch (error) {
+      console.error('Error saving shipping settings:', error)
+      setUploadStatus(`❌ Error: ${error instanceof Error ? error.message : 'Failed to save shipping settings'}`)
+      setTimeout(() => setUploadStatus(''), 5000)
+    } finally {
+      setSavingShippingSettings(false)
     }
   }
 
@@ -1221,6 +1276,102 @@ export default function AdminPanel() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Shipping Settings Section */}
+        <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-gray-100">
+          <div className="mb-6">
+            <p className="text-sm uppercase tracking-[0.2em] text-primary-600 font-semibold mb-2">
+              Store Settings
+            </p>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+              Shipping Settings
+            </h2>
+            <p className="text-gray-600 text-sm sm:text-base">
+              Set the free shipping threshold. Enter 0 for free shipping on all orders, or enter an amount above which orders get free shipping.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {/* Free Shipping Threshold */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Free Shipping Threshold (₹)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={shippingSettings.freeShippingThreshold}
+                onChange={(e) =>
+                  setShippingSettings({
+                    ...shippingSettings,
+                    freeShippingThreshold: parseFloat(e.target.value) || 0,
+                  })
+                }
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all text-gray-900"
+                placeholder="5000"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Enter 0 for free shipping on all orders. Enter an amount (e.g., 5000) - orders above this amount get free shipping, orders below pay ₹200 shipping.
+              </p>
+            </div>
+
+            {/* Preview Section */}
+            <div className="bg-primary-50 border-2 border-primary-200 rounded-xl p-6">
+              <h3 className="text-lg font-bold text-primary-900 mb-4">
+                Preview
+              </h3>
+              <div className="space-y-3 text-sm">
+                {shippingSettings.freeShippingThreshold === 0 ? (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700">Any Order Amount</span>
+                    <span className="font-semibold text-green-600">Shipping: Free</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-700">Order Amount: ₹3,000</span>
+                      <span className="font-semibold text-gray-900">
+                        Shipping: {shippingSettings.freeShippingThreshold > 3000 ? '₹200' : 'Free'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-700">Order Amount: ₹{shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}</span>
+                      <span className="font-semibold text-green-600">Shipping: Free</span>
+                    </div>
+                  </>
+                )}
+                <div className="pt-3 border-t border-primary-200">
+                  <p className="text-xs text-primary-800">
+                    {shippingSettings.freeShippingThreshold === 0
+                      ? '✅ Free shipping is enabled for all orders.'
+                      : `💡 Orders above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')} get free shipping. Orders below pay ₹200 shipping.`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <button
+              type="button"
+              onClick={handleSaveShippingSettings}
+              disabled={savingShippingSettings}
+              className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px]"
+            >
+              {savingShippingSettings ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <FiCheckCircle className="w-5 h-5" />
+                  <span>Save Shipping Settings</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
