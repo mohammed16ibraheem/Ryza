@@ -1,20 +1,92 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, readFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
-import path from 'path'
-import { del } from '@vercel/blob'
+import { del, put, list } from '@vercel/blob'
 
-const PRODUCTS_FILE = path.join(process.cwd(), 'data', 'products.json')
+const PRODUCTS_BLOB_PATH = 'data/products.json'
 
-// Ensure data directory exists
-async function ensureDataDir() {
+// Helper function to get products from Blob storage
+async function getProductsFromBlob(): Promise<any[]> {
   try {
-    const dataDir = path.join(process.cwd(), 'data')
-    if (!existsSync(dataDir)) {
-      await mkdir(dataDir, { recursive: true })
+    const token = process.env.BLOB_READ_WRITE_TOKEN
+    if (!token) {
+      console.warn('BLOB_READ_WRITE_TOKEN not set, returning empty products')
+      return []
     }
+
+    // Try to find the blob by listing with prefix
+    const blobs = await list({ 
+      prefix: PRODUCTS_BLOB_PATH,
+      token,
+      limit: 1
+    })
+
+    if (blobs.blobs.length === 0) {
+      // Blob doesn't exist yet, return empty array
+      return []
+    }
+
+    // Fetch the blob content using the URL
+    const blobUrl = blobs.blobs[0].url
+    const response = await fetch(blobUrl)
+    
+    if (!response.ok) {
+      console.warn(`Failed to fetch products blob: ${response.statusText}`)
+      return []
+    }
+
+    const text = await response.text()
+    if (!text || text.trim() === '') {
+      return []
+    }
+
+    return JSON.parse(text)
+  } catch (error: any) {
+    // If blob doesn't exist (404), return empty array
+    if (error.status === 404 || error.code === 'ENOENT' || error.message?.includes('not found')) {
+      return []
+    }
+    console.error('Error reading products from Blob:', error)
+    // Return empty array on error to prevent crashes
+    return []
+  }
+}
+
+// Helper function to save products to Blob storage
+async function saveProductsToBlob(products: any[]): Promise<void> {
+  try {
+    const token = process.env.BLOB_READ_WRITE_TOKEN
+    if (!token) {
+      throw new Error('BLOB_READ_WRITE_TOKEN not configured')
+    }
+
+    const jsonContent = JSON.stringify(products, null, 2)
+    const blob = new Blob([jsonContent], { type: 'application/json' })
+
+    // Check if blob already exists and delete it first (to update)
+    try {
+      const existingBlobs = await list({ 
+        prefix: PRODUCTS_BLOB_PATH,
+        token,
+        limit: 1
+      })
+      
+      if (existingBlobs.blobs.length > 0) {
+        // Delete old blob before creating new one
+        await del(existingBlobs.blobs[0].url, { token })
+      }
+    } catch (error) {
+      // Ignore errors when trying to delete (blob might not exist)
+      console.warn('Could not delete existing products blob:', error)
+    }
+
+    // Create/update the blob
+    await put(PRODUCTS_BLOB_PATH, blob, {
+      access: 'public',
+      token,
+      addRandomSuffix: false, // Keep same path for updates
+    })
   } catch (error) {
-    // Silently fail
+    console.error('Error saving products to Blob:', error)
+    throw error
   }
 }
 
@@ -26,14 +98,7 @@ function isBlobUrl(url: string): boolean {
 // GET - Fetch all products or filter by category
 export async function GET(request: NextRequest) {
   try {
-    await ensureDataDir()
-    
-    if (!existsSync(PRODUCTS_FILE)) {
-      return NextResponse.json({ products: [] })
-    }
-
-    const fileContent = await readFile(PRODUCTS_FILE, 'utf-8')
-    const products = JSON.parse(fileContent)
+    const products = await getProductsFromBlob()
 
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
@@ -71,15 +136,9 @@ export async function GET(request: NextRequest) {
 // POST - Save a new product
 export async function POST(request: NextRequest) {
   try {
-    await ensureDataDir()
-    
     const product = await request.json()
 
-    let products = []
-    if (existsSync(PRODUCTS_FILE)) {
-      const fileContent = await readFile(PRODUCTS_FILE, 'utf-8')
-      products = JSON.parse(fileContent)
-    }
+    const products = await getProductsFromBlob()
 
     // Check if updating existing product
     const existingIndex = products.findIndex((p: any) => p.id === product.id)
@@ -90,7 +149,7 @@ export async function POST(request: NextRequest) {
       products.push(product)
     }
 
-    await writeFile(PRODUCTS_FILE, JSON.stringify(products, null, 2), 'utf-8')
+    await saveProductsToBlob(products)
 
     return NextResponse.json({ success: true, product })
   } catch (error) {
@@ -105,12 +164,6 @@ export async function POST(request: NextRequest) {
 // DELETE - Delete a product
 export async function DELETE(request: NextRequest) {
   try {
-    await ensureDataDir()
-    
-    if (!existsSync(PRODUCTS_FILE)) {
-      return NextResponse.json({ error: 'No products found' }, { status: 404 })
-    }
-
     const { searchParams } = new URL(request.url)
     const productId = searchParams.get('id')
 
@@ -118,8 +171,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 })
     }
 
-    const fileContent = await readFile(PRODUCTS_FILE, 'utf-8')
-    const products = JSON.parse(fileContent)
+    const products = await getProductsFromBlob()
+    
+    if (products.length === 0) {
+      return NextResponse.json({ error: 'No products found' }, { status: 404 })
+    }
 
     const productIndex = products.findIndex((p: any) => p.id === productId)
     
@@ -184,7 +240,7 @@ export async function DELETE(request: NextRequest) {
 
     // Delete from database
     products.splice(productIndex, 1)
-    await writeFile(PRODUCTS_FILE, JSON.stringify(products, null, 2), 'utf-8')
+    await saveProductsToBlob(products)
 
     return NextResponse.json({ 
       success: true, 

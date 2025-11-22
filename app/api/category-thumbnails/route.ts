@@ -1,37 +1,99 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { readFile, writeFile, mkdir } from 'fs/promises'
-import { existsSync } from 'fs'
 import path from 'path'
-import { put, del } from '@vercel/blob'
+import { put, del, list } from '@vercel/blob'
 
-// Database file for category thumbnails
-const THUMBNAILS_DB_FILE = path.join(process.cwd(), 'data', 'category-thumbnails.json')
+const THUMBNAILS_BLOB_PATH = 'data/category-thumbnails.json'
 
-// Ensure data directory exists (for local JSON storage)
-async function ensureDataDir() {
+// Helper function to get thumbnails from Blob storage
+async function getThumbnailsFromBlob(): Promise<{ [key: string]: string }> {
   try {
-    const dataDir = path.join(process.cwd(), 'data')
-    if (!existsSync(dataDir)) {
-      await mkdir(dataDir, { recursive: true })
+    const token = process.env.BLOB_READ_WRITE_TOKEN
+    if (!token) {
+      console.warn('BLOB_READ_WRITE_TOKEN not set, returning empty thumbnails')
+      return {}
     }
+
+    // Try to find the blob by listing with prefix
+    const blobs = await list({ 
+      prefix: THUMBNAILS_BLOB_PATH,
+      token,
+      limit: 1
+    })
+
+    if (blobs.blobs.length === 0) {
+      // Blob doesn't exist yet, return empty object
+      return {}
+    }
+
+    // Fetch the blob content using the URL
+    const blobUrl = blobs.blobs[0].url
+    const response = await fetch(blobUrl)
+    
+    if (!response.ok) {
+      console.warn(`Failed to fetch thumbnails blob: ${response.statusText}`)
+      return {}
+    }
+
+    const text = await response.text()
+    if (!text || text.trim() === '') {
+      return {}
+    }
+
+    return JSON.parse(text)
+  } catch (error: any) {
+    // If blob doesn't exist (404), return empty object
+    if (error.status === 404 || error.code === 'ENOENT' || error.message?.includes('not found')) {
+      return {}
+    }
+    console.error('Error reading thumbnails from Blob:', error)
+    return {}
+  }
+}
+
+// Helper function to save thumbnails to Blob storage
+async function saveThumbnailsToBlob(thumbnails: { [key: string]: string }): Promise<void> {
+  try {
+    const token = process.env.BLOB_READ_WRITE_TOKEN
+    if (!token) {
+      throw new Error('BLOB_READ_WRITE_TOKEN not configured')
+    }
+
+    const jsonContent = JSON.stringify(thumbnails, null, 2)
+    const blob = new Blob([jsonContent], { type: 'application/json' })
+
+    // Check if blob already exists and delete it first (to update)
+    try {
+      const existingBlobs = await list({ 
+        prefix: THUMBNAILS_BLOB_PATH,
+        token,
+        limit: 1
+      })
+      
+      if (existingBlobs.blobs.length > 0) {
+        // Delete old blob before creating new one
+        await del(existingBlobs.blobs[0].url, { token })
+      }
+    } catch (error) {
+      // Ignore errors when trying to delete (blob might not exist)
+      console.warn('Could not delete existing thumbnails blob:', error)
+    }
+
+    // Create/update the blob
+    await put(THUMBNAILS_BLOB_PATH, blob, {
+      access: 'public',
+      token,
+      addRandomSuffix: false, // Keep same path for updates
+    })
   } catch (error) {
-    // Ignore errors
+    console.error('Error saving thumbnails to Blob:', error)
+    throw error
   }
 }
 
 // GET - Fetch all category thumbnails
 export async function GET() {
   try {
-    await ensureDataDir()
-    
-    // Read from database
-    if (!existsSync(THUMBNAILS_DB_FILE)) {
-      return NextResponse.json({ thumbnails: {} })
-    }
-
-    const fileContent = await readFile(THUMBNAILS_DB_FILE, 'utf-8')
-    const thumbnails = JSON.parse(fileContent)
-    
+    const thumbnails = await getThumbnailsFromBlob()
     return NextResponse.json({ thumbnails })
   } catch (error) {
     console.error('Error fetching thumbnails:', error)
@@ -42,8 +104,6 @@ export async function GET() {
 // POST - Save category thumbnail
 export async function POST(request: NextRequest) {
   try {
-    await ensureDataDir()
-    
     const formData = await request.formData()
     const category = formData.get('category') as string
     const file = formData.get('file') as File
@@ -89,21 +149,13 @@ export async function POST(request: NextRequest) {
       token,
     })
 
-    // Read existing database
-    let thumbnails: { [key: string]: string } = {}
-    if (existsSync(THUMBNAILS_DB_FILE)) {
-      const fileContent = await readFile(THUMBNAILS_DB_FILE, 'utf-8')
-      thumbnails = JSON.parse(fileContent)
-    }
+    // Read existing database from Blob
+    const thumbnails = await getThumbnailsFromBlob()
     
     // Delete old thumbnail from Blob if exists (to save space)
     if (thumbnails[category]) {
       try {
-        // Extract blob path from URL
         const oldUrl = thumbnails[category]
-        // Vercel Blob URLs are in format: https://[hash].public.blob.vercel-storage.com/[path]
-        // We need to extract the path or use the URL directly
-        // For now, we'll try to delete using the URL
         await del(oldUrl, { token })
       } catch (err) {
         // Ignore errors when deleting old file
@@ -114,8 +166,8 @@ export async function POST(request: NextRequest) {
     // Update database with new thumbnail URL
     thumbnails[category] = blob.url
     
-    // Save to database
-    await writeFile(THUMBNAILS_DB_FILE, JSON.stringify(thumbnails, null, 2), 'utf-8')
+    // Save to database (Blob storage)
+    await saveThumbnailsToBlob(thumbnails)
 
     return NextResponse.json({
       success: true,
@@ -134,8 +186,6 @@ export async function POST(request: NextRequest) {
 // DELETE - Delete a category thumbnail
 export async function DELETE(request: NextRequest) {
   try {
-    await ensureDataDir()
-    
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
 
@@ -166,13 +216,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     }
 
-    // Read database
-    if (!existsSync(THUMBNAILS_DB_FILE)) {
-      return NextResponse.json({ error: 'No thumbnails found' }, { status: 404 })
-    }
-
-    const fileContent = await readFile(THUMBNAILS_DB_FILE, 'utf-8')
-    const thumbnails = JSON.parse(fileContent)
+    // Read database from Blob
+    const thumbnails = await getThumbnailsFromBlob()
 
     if (!thumbnails[category]) {
       return NextResponse.json({ error: 'Thumbnail not found for this category' }, { status: 404 })
@@ -188,7 +233,7 @@ export async function DELETE(request: NextRequest) {
 
     // Remove from database
     delete thumbnails[category]
-    await writeFile(THUMBNAILS_DB_FILE, JSON.stringify(thumbnails, null, 2), 'utf-8')
+    await saveThumbnailsToBlob(thumbnails)
 
     return NextResponse.json({
       success: true,
