@@ -943,8 +943,8 @@ export default function AdminPanel() {
                           </div>
                         )}
                         
-                        {/* Mark Out of Stock - Enhanced */}
-                        <div className="absolute top-3 right-3 z-10">
+                        {/* Mark Out of Stock - Enhanced - Moved to bottom-right */}
+                        <div className="absolute bottom-3 right-3 z-10">
                           <label className={`group flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg cursor-pointer transition-all duration-200 ${
                             outOfStockImages.includes(index) 
                               ? 'bg-red-600 hover:bg-red-700 text-white' 
