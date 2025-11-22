@@ -244,85 +244,84 @@ export default function ProductDetailPage() {
                   )}
                 </div>
                 
-                {/* Image Indicators */}
-                {currentImages.length > 1 && (
-                  <div className="flex justify-center gap-2 p-4">
-                    {currentImages.map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentImageIndex(index)}
-                        className={`h-1.5 sm:h-2 rounded-full transition-all ${
-                          index === currentImageIndex ? 'bg-primary-600 w-8' : 'bg-gray-300 w-1.5 sm:w-2'
-                        }`}
-                        aria-label={`Go to image ${index + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
-                
-                {/* Color Swatches - Classic Small Dots */}
-                {product.imageColors && product.imageColors.length > 0 && (
-                  <div className="flex justify-center items-center gap-2.5 sm:gap-3 px-4 pb-4">
-                    {product.imageColors.map((colorName, index) => {
-                      // Extract color from color name or use a default
-                      const getColorFromName = (name: string): string => {
-                        const colorMap: { [key: string]: string } = {
-                          'black': '#000000',
-                          'blue': '#3B82F6',
-                          'brown': '#8B4513',
-                          'green': '#10B981',
-                          'red': '#EF4444',
-                          'white': '#FFFFFF',
-                          'gray': '#6B7280',
-                          'grey': '#6B7280',
-                          'purple': '#92487A',
-                          'pink': '#EC4899',
-                          'yellow': '#FBBF24',
-                          'orange': '#F97316',
-                          'navy': '#1E3A8A',
-                          'beige': '#F5F5DC',
-                          'light': '#F3F4F6',
-                          'dark': '#1F2937',
+                {/* Elegant Color Swatches / Image Indicators - Combined */}
+                {(product.imageColors && product.imageColors.length > 0) || currentImages.length > 1 ? (
+                  <div className="flex justify-center items-center gap-2 px-4 py-3 border-t border-gray-100">
+                    {product.imageColors && product.imageColors.length > 0 ? (
+                      // Show color swatches if available
+                      product.imageColors.map((colorName, index) => {
+                        // Extract color from color name or use a default
+                        const getColorFromName = (name: string): string => {
+                          const colorMap: { [key: string]: string } = {
+                            'black': '#000000',
+                            'blue': '#3B82F6',
+                            'brown': '#8B4513',
+                            'green': '#10B981',
+                            'red': '#EF4444',
+                            'white': '#FFFFFF',
+                            'gray': '#6B7280',
+                            'grey': '#6B7280',
+                            'purple': '#92487A',
+                            'pink': '#EC4899',
+                            'yellow': '#FBBF24',
+                            'orange': '#F97316',
+                            'navy': '#1E3A8A',
+                            'beige': '#F5F5DC',
+                            'light': '#F3F4F6',
+                            'dark': '#1F2937',
+                          }
+                          
+                          const lowerName = name.toLowerCase()
+                          for (const [key, value] of Object.entries(colorMap)) {
+                            if (lowerName.includes(key)) {
+                              return value
+                            }
+                          }
+                          return '#92487A' // Default to primary color
                         }
                         
-                        const lowerName = name.toLowerCase()
-                        for (const [key, value] of Object.entries(colorMap)) {
-                          if (lowerName.includes(key)) {
-                            return value
-                          }
-                        }
-                        return '#92487A' // Default to primary color
-                      }
-                      
-                      const colorValue = getColorFromName(colorName)
-                      const isActive = index === currentImageIndex
-                      
-                      return (
+                        const colorValue = getColorFromName(colorName)
+                        const isActive = index === currentImageIndex
+                        
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentImageIndex(index)}
+                            className="relative group"
+                            aria-label={`Color: ${colorName}`}
+                            title={colorName}
+                          >
+                            <div
+                              className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
+                                isActive 
+                                  ? 'ring-2 ring-primary-600 ring-offset-2 ring-offset-white' 
+                                  : 'ring-1 ring-gray-300 group-hover:ring-gray-400'
+                              }`}
+                              style={{ backgroundColor: colorValue }}
+                            />
+                            {isActive && (
+                              <div className="absolute inset-0 -m-0.5 rounded-full bg-primary-600/20 animate-pulse" />
+                            )}
+                          </button>
+                        )
+                      })
+                    ) : (
+                      // Fallback to minimal dots if no color names
+                      currentImages.map((_, index) => (
                         <button
                           key={index}
                           onClick={() => setCurrentImageIndex(index)}
-                          className={`relative transition-all duration-200 ${
-                            isActive ? 'scale-110' : 'hover:scale-105'
-                          }`}
-                          aria-label={`Color: ${colorName}`}
-                          title={colorName}
-                        >
-                          <div
-                            className={`w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full border-2 transition-all ${
-                              isActive 
-                                ? 'border-primary-600 shadow-md shadow-primary-600/50' 
-                                : 'border-gray-300 hover:border-gray-400'
-                            }`}
-                            style={{ backgroundColor: colorValue }}
-                          />
-                          {isActive && (
-                            <div className="absolute inset-0 rounded-full border-2 border-primary-600 animate-pulse" />
-                          )}
-                        </button>
-                      )
-                    })}
+                          className={`transition-all duration-200 ${
+                            index === currentImageIndex 
+                              ? 'w-2 h-2 bg-primary-600 ring-2 ring-primary-600 ring-offset-1 ring-offset-white' 
+                              : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
+                          } rounded-full`}
+                          aria-label={`Image ${index + 1}`}
+                        />
+                      ))
+                    )}
                   </div>
-                )}
+                ) : null}
               </div>
             ) : (
               <div className="aspect-square bg-gray-100 flex items-center justify-center">
