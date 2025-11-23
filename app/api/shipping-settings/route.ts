@@ -74,8 +74,12 @@ async function getShippingSettingsFromBlob(): Promise<{
 
     const data = JSON.parse(text)
     // Handle legacy data format
+    // IMPORTANT: Check for undefined/null, not falsy (0 is valid!)
+    const threshold = data.freeShippingThreshold !== undefined && data.freeShippingThreshold !== null
+      ? Number(data.freeShippingThreshold)
+      : 5000
     return {
-      freeShippingThreshold: data.freeShippingThreshold || 5000,
+      freeShippingThreshold: threshold,
     }
   } catch (error: any) {
     if (error.status === 404 || error.code === 'ENOENT' || error.message?.includes('not found')) {

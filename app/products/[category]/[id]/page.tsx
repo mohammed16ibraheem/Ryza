@@ -458,9 +458,11 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            <p className="text-gray-700 mb-6 leading-relaxed">
-              {product.description}
-            </p>
+            {product.description && product.description.toLowerCase().trim() !== 'bulk order select' && (
+              <p className="text-gray-700 mb-6 leading-relaxed">
+                {product.description}
+              </p>
+            )}
 
             {product.details && (
               <div className="mb-6">

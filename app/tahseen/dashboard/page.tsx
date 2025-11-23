@@ -173,8 +173,12 @@ export default function AdminPanel() {
         })
         const data = await response.json()
         if (data.freeShippingThreshold !== undefined) {
+          // IMPORTANT: Check for undefined/null, not falsy (0 is valid!)
+          const threshold = data.freeShippingThreshold !== undefined && data.freeShippingThreshold !== null
+            ? Number(data.freeShippingThreshold)
+            : 5000
           setShippingSettings({
-            freeShippingThreshold: data.freeShippingThreshold || 5000,
+            freeShippingThreshold: threshold,
           })
         }
       } catch (error) {
@@ -706,8 +710,12 @@ export default function AdminPanel() {
             })
             const refreshData = await refreshResponse.json()
             if (refreshData.freeShippingThreshold !== undefined) {
+              // IMPORTANT: Check for undefined/null, not falsy (0 is valid!)
+              const threshold = refreshData.freeShippingThreshold !== undefined && refreshData.freeShippingThreshold !== null
+                ? Number(refreshData.freeShippingThreshold)
+                : 5000
               setShippingSettings({
-                freeShippingThreshold: refreshData.freeShippingThreshold || 5000,
+                freeShippingThreshold: threshold,
               })
             }
           } catch (err) {

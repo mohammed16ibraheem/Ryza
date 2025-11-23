@@ -18,7 +18,7 @@ export default function CartPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartUpdated, setCartUpdated] = useState(0)
   const [shippingSettings, setShippingSettings] = useState({
-    freeShippingThreshold: 5000,
+    freeShippingThreshold: 0, // Default to 0 (free shipping) instead of 5000
   })
   const BASE_SHIPPING_COST = 200 // Fixed shipping cost for orders below threshold
 
@@ -58,24 +58,44 @@ export default function CartPage() {
   useEffect(() => {
     const fetchShippingSettings = async () => {
       try {
-        const response = await fetch('/api/shipping-settings', {
-          cache: 'no-store' // Always fetch fresh data
+        // Add timestamp to force fresh fetch (bypass browser cache)
+        const timestamp = Date.now()
+        const response = await fetch(`/api/shipping-settings?t=${timestamp}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+          },
         })
+        
+        if (!response.ok) {
+          console.error('Failed to fetch shipping settings:', response.status)
+          return
+        }
+        
         const data = await response.json()
+        console.log('Shipping settings fetched:', data) // Debug log
+        
         if (data.freeShippingThreshold !== undefined) {
+          const threshold = typeof data.freeShippingThreshold === 'number' 
+            ? data.freeShippingThreshold 
+            : parseFloat(data.freeShippingThreshold) || 0
+          
           setShippingSettings({
-            freeShippingThreshold: data.freeShippingThreshold || 5000,
+            freeShippingThreshold: threshold,
           })
+          console.log('Shipping settings updated:', threshold) // Debug log
         }
       } catch (error) {
         console.error('Error fetching shipping settings:', error)
       }
     }
     
+    // Fetch immediately on mount
     fetchShippingSettings()
     
-    // Refresh shipping settings every 30 seconds to catch admin updates
-    const interval = setInterval(fetchShippingSettings, 30000)
+    // Refresh shipping settings every 10 seconds to catch admin updates (reduced from 30s)
+    const interval = setInterval(fetchShippingSettings, 10000)
     return () => clearInterval(interval)
   }, [])
 
