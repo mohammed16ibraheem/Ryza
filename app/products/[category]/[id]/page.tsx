@@ -64,7 +64,7 @@ export default function ProductDetailPage() {
         
         const foundProduct = data.products.find((p: any) => p.id === productId)
         
-        if (foundProduct) {
+    if (foundProduct) {
                       const transformedProduct: Product = {
                         id: foundProduct.id,
                         name: foundProduct.name || foundProduct.title,
@@ -376,10 +376,10 @@ export default function ProductDetailPage() {
               </div>
             ) : (
               <div className="aspect-square bg-gray-100 flex items-center justify-center">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
+            <img
+              src={product.image}
+              alt={product.name}
+              className="w-full h-full object-cover"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = '/placeholder.jpg'
                   }}

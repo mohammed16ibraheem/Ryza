@@ -69,12 +69,16 @@ Visit `http://localhost:3000` to see your application.
 ```
 desing/
 ├── app/
-│   ├── admin/              # Admin panel for product management
+│   ├── tahseen/            # Admin panel (login and dashboard)
+│   │   ├── page.tsx        # Login page
+│   │   └── dashboard/      # Admin dashboard for product management
 │   ├── api/                # API routes
 │   │   ├── upload/         # Image upload endpoint
 │   │   ├── upload-video/   # Video upload endpoint
 │   │   ├── products/      # Product CRUD operations
-│   │   └── category-thumbnails/  # Category thumbnail management
+│   │   ├── category-thumbnails/  # Category thumbnail management
+│   │   ├── auth/           # Authentication endpoints (login, logout, check)
+│   │   └── shipping-settings/  # Shipping settings management
 │   ├── products/           # Product listing and detail pages
 │   ├── cart/               # Shopping cart page
 │   └── ...
@@ -87,11 +91,13 @@ desing/
 
 ## Admin Panel
 
-Access the admin panel at `/admin` to:
+Access the admin panel at `/tahseen` to:
+- Login with username and password (protected route)
 - Upload products with images and videos
 - Manage product details (name, price, description)
 - Organize products by category
 - Upload category thumbnails
+- Configure shipping settings
 - Delete products (automatically removes files from Blob)
 
 ## Storage Details
