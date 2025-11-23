@@ -177,15 +177,19 @@ export default function ProductDetailPage() {
     }
     
     const cart = JSON.parse(localStorage.getItem('cart') || '[]')
+    // Use the currently selected image, not always the first one
+    const selectedImage = currentImages[currentImageIndex] || currentImages[0] || product.image
+    
     for (let i = 0; i < quantity; i++) {
       cart.push({
         id: product.id,
         name: product.name,
         price: product.price,
-        image: currentImages[0] || product.image,
+        image: selectedImage, // Use the currently selected image
         quantity: 1,
         selectedSize,
         selectedColor,
+        selectedImageIndex: currentImageIndex, // Store which image index was selected (0, 1, 2, etc.)
       })
     }
     localStorage.setItem('cart', JSON.stringify(cart))
@@ -297,7 +301,7 @@ export default function ProductDetailPage() {
                 
                 {/* Elegant Color Swatches / Image Indicators - Combined */}
                 {(product.imageColors && product.imageColors.length > 0) || currentImages.length > 1 ? (
-                  <div className="flex justify-center items-center gap-2 px-4 py-3 border-t border-gray-100">
+                  <div className="flex justify-center items-center gap-2 border-t border-gray-100">
                     {product.imageColors && product.imageColors.length > 0 ? (
                       // Show color swatches if available
                       product.imageColors.map((colorName, index) => {
@@ -351,7 +355,7 @@ export default function ProductDetailPage() {
                               style={{ backgroundColor: colorValue }}
                             />
                             {isActive && (
-                              <div className="absolute inset-0 -m-0.5 rounded-full bg-primary-600/20 animate-pulse" />
+                              <div className="absolute inset-0 -m-0.5 rounded-full bg-primary-600/20" />
                             )}
                           </button>
                         )

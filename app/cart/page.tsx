@@ -12,6 +12,7 @@ interface CartItem {
   quantity: number
   selectedSize?: string
   selectedColor?: string
+  selectedImageIndex?: number // Store which image index was selected (0, 1, 2, etc.)
 }
 
 export default function CartPage() {
@@ -26,12 +27,13 @@ export default function CartPage() {
     const loadCart = () => {
       const savedCart = localStorage.getItem('cart')
       if (savedCart) {
-        // Group items by id, size, and color
+        // Group items by id, size, color, and image index
         const items = JSON.parse(savedCart)
         const grouped: { [key: string]: CartItem } = {}
         
         items.forEach((item: CartItem) => {
-          const key = `${item.id}-${item.selectedSize || ''}-${item.selectedColor || ''}`
+          // Include image index in the grouping key so each color/image is separate
+          const key = `${item.id}-${item.selectedSize || ''}-${item.selectedColor || ''}-${item.selectedImageIndex !== undefined ? item.selectedImageIndex : ''}`
           if (grouped[key]) {
             grouped[key].quantity += 1
           } else {
