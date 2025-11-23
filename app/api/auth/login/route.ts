@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { SignJWT } from 'jose'
 import { cookies } from 'next/headers'
 
+// Force dynamic rendering - this route uses cookies which are dynamic
+export const dynamic = 'force-dynamic'
+
 const SECRET_KEY = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'your-secret-key-change-this-in-production'
 )

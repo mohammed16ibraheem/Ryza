@@ -3,6 +3,9 @@ import { put, del, list } from '@vercel/blob'
 import { cookies } from 'next/headers'
 import { jwtVerify } from 'jose'
 
+// Force dynamic rendering - POST route uses cookies for authentication
+export const dynamic = 'force-dynamic'
+
 const SHIPPING_SETTINGS_BLOB_PATH = 'data/shipping-settings.json'
 const SECRET_KEY = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'your-secret-key-change-this-in-production'
