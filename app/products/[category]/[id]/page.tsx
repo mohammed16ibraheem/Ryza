@@ -349,14 +349,11 @@ export default function ProductDetailPage() {
                             <div
                               className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
                                 isActive 
-                                  ? 'ring-2 ring-primary-600 ring-offset-2 ring-offset-white' 
+                                  ? 'ring-2 ring-primary-600' 
                                   : 'ring-1 ring-gray-300 group-hover:ring-gray-400'
                               }`}
                               style={{ backgroundColor: colorValue }}
                             />
-                            {isActive && (
-                              <div className="absolute inset-0 -m-0.5 rounded-full bg-primary-600/20" />
-                            )}
                           </button>
                         )
                       })
@@ -368,7 +365,7 @@ export default function ProductDetailPage() {
                           onClick={() => setCurrentImageIndex(index)}
                           className={`transition-all duration-200 ${
                             index === currentImageIndex 
-                              ? 'w-2 h-2 bg-primary-600 ring-2 ring-primary-600 ring-offset-1 ring-offset-white' 
+                              ? 'w-2 h-2 bg-primary-600 ring-2 ring-primary-600' 
                               : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
                           } rounded-full`}
                           aria-label={`Image ${index + 1}`}
