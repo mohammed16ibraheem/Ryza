@@ -296,7 +296,7 @@ export default function CheckoutPage() {
 
       // Load Cashfree SDK and redirect to checkout
       // Check if script already exists
-      let cashfreeScript = document.querySelector('script[src="https://sdk.cashfree.com/js/v3/cashfree.js"]')
+      let cashfreeScript: HTMLScriptElement | null = document.querySelector('script[src="https://sdk.cashfree.com/js/v3/cashfree.js"]') as HTMLScriptElement | null
       
       if (!cashfreeScript) {
         cashfreeScript = document.createElement('script')
@@ -307,9 +307,9 @@ export default function CheckoutPage() {
 
       // Wait for SDK to load
       const initCheckout = () => {
-        // @ts-ignore
+        // @ts-ignore - Cashfree SDK is loaded dynamically
         if (typeof Cashfree !== 'undefined') {
-          // @ts-ignore
+          // @ts-ignore - Cashfree SDK is loaded dynamically
           const cashfree = Cashfree({
             mode: 'production',
           })
