@@ -289,9 +289,12 @@ export default function CartPage() {
                   </div>
                 </div>
               </div>
-              <button className="w-full py-4 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors mb-4 touch-manipulation min-h-[44px]">
+              <Link
+                href="/checkout"
+                className="block w-full py-4 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors mb-4 touch-manipulation min-h-[44px] text-center"
+              >
                 Proceed to Checkout
-              </button>
+              </Link>
               <Link
                 href="/products"
                 className="block text-center text-primary-600 hover:text-primary-700 font-semibold"
