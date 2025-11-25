@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { FiArrowLeft, FiMapPin, FiNavigation } from 'react-icons/fi'
+import { useRouter } from 'next/navigation'
+import { FiArrowLeft, FiMapPin, FiNavigation, FiCreditCard, FiSmartphone, FiWallet, FiBank, FiDollarSign } from 'react-icons/fi'
 
 interface CartItem {
   id: number
@@ -41,6 +42,10 @@ export default function CheckoutPage() {
     pinCode: '',
   })
   const [errors, setErrors] = useState<Partial<ShippingInfo>>({})
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('')
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [showPaymentMethods, setShowPaymentMethods] = useState(false)
+  const router = useRouter()
   const BASE_SHIPPING_COST = 200
 
   useEffect(() => {
@@ -221,24 +226,110 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleProcessToPay = (e: React.FormEvent) => {
+  const handleProcessToPay = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!validateForm()) {
       return
     }
 
-    // Here you would typically send the order to your payment gateway
-    // For now, we'll just show an alert
-    alert('Redirecting to payment gateway...\n\nOrder Details:\n' + 
-      `Name: ${formData.firstName} ${formData.lastName}\n` +
-      `Mobile: ${formData.mobileNumber}\n` +
-      `Address: ${formData.address}, ${formData.location}\n` +
-      `Pin Code: ${formData.pinCode}\n` +
-      `Total: ₹${total.toLocaleString('en-IN')}`
-    )
-    
-    // TODO: Integrate with payment gateway (Razorpay, Stripe, etc.)
+    // Show payment method selection
+    if (!showPaymentMethods) {
+      setShowPaymentMethods(true)
+      return
+    }
+
+    // Validate payment method selection
+    if (!selectedPaymentMethod) {
+      alert('Please select a payment method')
+      return
+    }
+
+    setIsProcessingPayment(true)
+
+    try {
+      // Generate unique order ID
+      const orderId = `ORDER_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      // Create order via API
+      const response = await fetch('/api/payments/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderAmount: total,
+          customerName: `${formData.firstName} ${formData.lastName}`,
+          customerEmail: `${formData.mobileNumber}@ryza.com`,
+          customerPhone: formData.mobileNumber,
+          orderId: orderId,
+          returnUrl: `${window.location.origin}/payment/return?order_id=${orderId}`,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create payment order')
+      }
+
+      // Store order details in localStorage for later reference
+      localStorage.setItem('pending_order', JSON.stringify({
+        orderId: orderId,
+        customerName: `${formData.firstName} ${formData.lastName}`,
+        customerPhone: formData.mobileNumber,
+        address: formData.address,
+        location: formData.location,
+        pinCode: formData.pinCode,
+        landmark: formData.landmark,
+        total: total,
+        cart: cart,
+      }))
+
+      // Load Cashfree SDK and redirect to checkout
+      // Check if script already exists
+      let cashfreeScript = document.querySelector('script[src="https://sdk.cashfree.com/js/v3/cashfree.js"]')
+      
+      if (!cashfreeScript) {
+        cashfreeScript = document.createElement('script')
+        cashfreeScript.src = 'https://sdk.cashfree.com/js/v3/cashfree.js'
+        cashfreeScript.async = true
+        document.body.appendChild(cashfreeScript)
+      }
+
+      // Wait for SDK to load
+      const initCheckout = () => {
+        // @ts-ignore
+        if (typeof Cashfree !== 'undefined') {
+          // @ts-ignore
+          const cashfree = Cashfree({
+            mode: 'production',
+          })
+
+          cashfree.checkout({
+            paymentSessionId: data.payment_session_id,
+            redirectTarget: '_self',
+          })
+        } else {
+          // Retry after a short delay
+          setTimeout(initCheckout, 100)
+        }
+      }
+
+      if (cashfreeScript.getAttribute('data-loaded') === 'true') {
+        initCheckout()
+      } else {
+        cashfreeScript.addEventListener('load', () => {
+          cashfreeScript?.setAttribute('data-loaded', 'true')
+          initCheckout()
+        })
+        initCheckout() // Try immediately in case it's already loaded
+      }
+    } catch (error: any) {
+      console.error('Payment error:', error)
+      alert(`Payment failed: ${error.message || 'Something went wrong. Please try again.'}`)
+      setIsProcessingPayment(false)
+    }
   }
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -451,13 +542,124 @@ export default function CheckoutPage() {
                 )}
               </div>
 
+              {/* Payment Method Selection */}
+              {showPaymentMethods && (
+                <div className="pt-4 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Payment Method</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {/* UPI */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('upi')}
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        selectedPaymentMethod === 'upi'
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      <FiSmartphone className={`w-6 h-6 mx-auto mb-2 ${
+                        selectedPaymentMethod === 'upi' ? 'text-primary-600' : 'text-gray-600'
+                      }`} />
+                      <p className={`text-sm font-medium ${
+                        selectedPaymentMethod === 'upi' ? 'text-primary-600' : 'text-gray-700'
+                      }`}>UPI</p>
+                    </button>
+
+                    {/* Credit/Debit Cards */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('card')}
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        selectedPaymentMethod === 'card'
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      <FiCreditCard className={`w-6 h-6 mx-auto mb-2 ${
+                        selectedPaymentMethod === 'card' ? 'text-primary-600' : 'text-gray-600'
+                      }`} />
+                      <p className={`text-sm font-medium ${
+                        selectedPaymentMethod === 'card' ? 'text-primary-600' : 'text-gray-700'
+                      }`}>Cards</p>
+                    </button>
+
+                    {/* E-Wallets */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('wallet')}
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        selectedPaymentMethod === 'wallet'
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      <FiWallet className={`w-6 h-6 mx-auto mb-2 ${
+                        selectedPaymentMethod === 'wallet' ? 'text-primary-600' : 'text-gray-600'
+                      }`} />
+                      <p className={`text-sm font-medium ${
+                        selectedPaymentMethod === 'wallet' ? 'text-primary-600' : 'text-gray-700'
+                      }`}>Wallets</p>
+                    </button>
+
+                    {/* Net Banking */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('netbanking')}
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        selectedPaymentMethod === 'netbanking'
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      <FiBank className={`w-6 h-6 mx-auto mb-2 ${
+                        selectedPaymentMethod === 'netbanking' ? 'text-primary-600' : 'text-gray-600'
+                      }`} />
+                      <p className={`text-sm font-medium ${
+                        selectedPaymentMethod === 'netbanking' ? 'text-primary-600' : 'text-gray-700'
+                      }`}>Net Banking</p>
+                    </button>
+
+                    {/* EMI */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod('emi')}
+                      className={`p-4 border-2 rounded-lg transition-all ${
+                        selectedPaymentMethod === 'emi'
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-gray-300 hover:border-primary-300'
+                      }`}
+                    >
+                      <FiDollarSign className={`w-6 h-6 mx-auto mb-2 ${
+                        selectedPaymentMethod === 'emi' ? 'text-primary-600' : 'text-gray-600'
+                      }`} />
+                      <p className={`text-sm font-medium ${
+                        selectedPaymentMethod === 'emi' ? 'text-primary-600' : 'text-gray-700'
+                      }`}>EMI</p>
+                    </button>
+                  </div>
+                  {!selectedPaymentMethod && (
+                    <p className="mt-2 text-sm text-red-500">Please select a payment method</p>
+                  )}
+                </div>
+              )}
+
               {/* Process to Pay Button - Inside Form */}
               <div className="pt-4 border-t border-gray-200">
                 <button
                   type="submit"
-                  className="w-full py-4 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors touch-manipulation min-h-[44px] text-lg"
+                  disabled={isProcessingPayment}
+                  className="w-full py-4 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors touch-manipulation min-h-[44px] text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Process to Pay
+                  {isProcessingPayment ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Processing...
+                    </>
+                  ) : showPaymentMethods ? (
+                    'Proceed to Payment'
+                  ) : (
+                    'Process to Pay'
+                  )}
                 </button>
               </div>
             </form>
