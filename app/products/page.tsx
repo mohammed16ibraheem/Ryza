@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { FiShoppingCart, FiFilter, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
+import { FiShoppingCart, FiFilter, FiChevronLeft, FiChevronRight, FiCheck } from 'react-icons/fi'
 import Image from 'next/image'
 
 interface Product {
@@ -24,6 +24,18 @@ export default function AllProductsPage() {
   const [sortBy, setSortBy] = useState('default')
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [showNotification, setShowNotification] = useState(false)
+  const [notificationMessage, setNotificationMessage] = useState('')
+  const [isVisible, setIsVisible] = useState(false)
+
+  // Handle notification visibility animation
+  useEffect(() => {
+    if (showNotification) {
+      setTimeout(() => setIsVisible(true), 10)
+    } else {
+      setIsVisible(false)
+    }
+  }, [showNotification])
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -91,11 +103,31 @@ export default function AllProductsPage() {
     cart.push({ ...product, quantity: 1 })
     localStorage.setItem('cart', JSON.stringify(cart))
     window.dispatchEvent(new Event('cartUpdated'))
-    alert(`${product.name} added to cart!`)
+    
+    // Show success notification
+    setNotificationMessage(`${product.name} added to cart!`)
+    setShowNotification(true)
+    setTimeout(() => setShowNotification(false), 7000)
   }
 
   return (
     <div className="pt-20 md:pt-24 min-h-screen bg-gray-50">
+      {/* Toast Notification */}
+      {showNotification && (
+        <div className={`fixed top-20 md:top-24 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ease-out ${
+          isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+        }`}>
+          <div className="mx-4 px-4 py-3 md:px-6 md:py-4 rounded-xl shadow-2xl border-2 flex items-center gap-3 md:gap-4 min-w-[280px] md:min-w-[380px] max-w-[90vw] backdrop-blur-sm bg-green-50/95 border-green-300 text-green-800">
+            <div className="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center bg-green-100">
+              <FiCheck className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
+            </div>
+            <p className="text-sm md:text-base font-semibold flex-1">
+              {notificationMessage}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
         {/* Header */}
         <div className="mb-6 md:mb-8">

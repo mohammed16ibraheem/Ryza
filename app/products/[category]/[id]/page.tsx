@@ -172,7 +172,7 @@ export default function ProductDetailPage() {
     if (isCurrentImageOutOfStock) {
       setNotificationMessage('This item is currently out of stock. Please select a different variant.')
       setShowNotification(true)
-      setTimeout(() => setShowNotification(false), 4000)
+      setTimeout(() => setShowNotification(false), 7000)
       return
     }
     
@@ -202,7 +202,7 @@ export default function ProductDetailPage() {
       : `${quantity} ${productName} added to cart!`
     setNotificationMessage(message)
     setShowNotification(true)
-    setTimeout(() => setShowNotification(false), 3000)
+    setTimeout(() => setShowNotification(false), 7000)
   }
 
   return (
