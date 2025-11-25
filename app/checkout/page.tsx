@@ -258,7 +258,7 @@ export default function CheckoutPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          orderAmount: total,
+          orderAmount: total, // Total = Product Price + Shipping (if applicable)
           customerName: `${formData.firstName} ${formData.lastName}`,
           customerEmail: `${formData.mobileNumber}@ryza.com`,
           customerPhone: formData.mobileNumber,
@@ -270,7 +270,15 @@ export default function CheckoutPage() {
       const data = await response.json()
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to create payment order')
+        // Handle rate limit errors specifically
+        if (response.status === 429 || data.rateLimitError) {
+          const retryAfter = data.retryAfter || 60
+          alert(`${data.error || 'Too many payment requests. Please wait a moment and try again.'}`)
+          setIsProcessingPayment(false)
+          return
+        }
+        // Show user-friendly error message (technical details are hidden)
+        throw new Error(data.error || 'Payment processing failed. Please try again.')
       }
 
       // Store order details in localStorage for later reference
@@ -332,12 +340,21 @@ export default function CheckoutPage() {
     }
   }
 
+  // Calculate subtotal (product prices only)
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  
+  // Calculate shipping cost:
+  // - If admin sets freeShippingThreshold = 0: Free shipping for all (shipping = 0)
+  // - If admin sets freeShippingThreshold > 0 (e.g., 5000):
+  //   - If subtotal >= threshold: Free shipping (shipping = 0)
+  //   - If subtotal < threshold: Add ₹200 shipping (shipping = 200)
   const shipping = shippingSettings.freeShippingThreshold === 0
-    ? 0
+    ? 0  // Free shipping for all orders
     : subtotal >= shippingSettings.freeShippingThreshold
-    ? 0
-    : BASE_SHIPPING_COST
+    ? 0  // Free shipping (order amount above threshold)
+    : BASE_SHIPPING_COST  // Add ₹200 shipping (order below threshold)
+  
+  // Total amount = Product Price + Shipping (this is what goes to payment gateway)
   const total = subtotal + shipping
 
   if (cart.length === 0) {

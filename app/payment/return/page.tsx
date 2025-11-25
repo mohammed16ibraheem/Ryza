@@ -23,7 +23,8 @@ export default function PaymentReturnPage() {
         const data = await response.json()
 
         if (data.success) {
-          if (data.order_status === 'PAID' || data.payment_status === 'SUCCESS') {
+          // Check if order is paid - order_status === 'PAID' means payment successful
+          if (data.order_status === 'PAID') {
             setPaymentStatus('success')
             setOrderDetails(data)
             
@@ -36,7 +37,17 @@ export default function PaymentReturnPage() {
             setOrderDetails(data)
           }
         } else {
-          setPaymentStatus('failed')
+          // Check for rate limit error
+          if (data.rateLimitError) {
+            setPaymentStatus('failed')
+            setOrderDetails({
+              ...data,
+              payment_message: data.message || 'Too many requests. Please try again later.',
+            })
+          } else {
+            setPaymentStatus('failed')
+            setOrderDetails(data)
+          }
         }
       } catch (error) {
         console.error('Error verifying payment:', error)

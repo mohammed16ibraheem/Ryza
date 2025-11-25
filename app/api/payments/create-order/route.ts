@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Cashfree, CFEnvironment } from 'cashfree-pg'
+import { 
+  getUserFriendlyError, 
+  isRateLimitError, 
+  getRetryAfter, 
+  logErrorForDevelopers,
+  extractCashfreeError 
+} from '@/lib/cashfree-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,11 +57,16 @@ export async function POST(request: NextRequest) {
     // Create order using Cashfree SDK
     const response = await cashfree.PGCreateOrder(orderRequest)
     
+    // Check for rate limit headers in response
+    const rateLimitRemaining = response.headers?.['x-ratelimit-remaining']
+    const rateLimitRetry = response.headers?.['x-ratelimit-retry']
+    
     if (response.data && response.data.payment_session_id) {
       return NextResponse.json({
         success: true,
         order_id: response.data.order_id,
         payment_session_id: response.data.payment_session_id,
+        rateLimitRemaining: rateLimitRemaining ? parseInt(rateLimitRemaining) : undefined,
       })
     } else {
       return NextResponse.json(
@@ -63,11 +75,39 @@ export async function POST(request: NextRequest) {
       )
     }
   } catch (error: any) {
-    console.error('Error creating Cashfree order:', error)
+    // Extract Cashfree error details
+    const cashfreeError = extractCashfreeError(error)
+    
+    // Log detailed error for developers (not shown to users)
+    logErrorForDevelopers(cashfreeError, 'Create Order API')
+    
+    // Check if it's a rate limit error
+    if (isRateLimitError(error)) {
+      const retryAfter = getRetryAfter(error)
+      const userMessage = getUserFriendlyError(cashfreeError)
+      
+      return NextResponse.json(
+        { 
+          error: userMessage,
+          rateLimitError: true,
+          retryAfter: retryAfter,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': retryAfter.toString(),
+          }
+        }
+      )
+    }
+    
+    // Get user-friendly error message (hide technical details)
+    const userMessage = getUserFriendlyError(cashfreeError)
+    
+    // Return user-friendly error (technical details logged but not sent)
     return NextResponse.json(
       { 
-        error: 'Failed to create payment order',
-        details: error.response?.data || error.message 
+        error: userMessage,
       },
       { status: 500 }
     )

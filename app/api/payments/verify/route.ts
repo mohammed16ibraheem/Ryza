@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Cashfree, CFEnvironment } from 'cashfree-pg'
+import { 
+  getUserFriendlyError, 
+  isRateLimitError, 
+  getRetryAfter, 
+  logErrorForDevelopers,
+  extractCashfreeError 
+} from '@/lib/cashfree-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,18 +32,24 @@ export async function GET(request: NextRequest) {
     const version = '2023-08-01'
     const response = await cashfree.PGFetchOrder(version, orderId)
 
+    // Check for rate limit headers in response
+    const rateLimitRemaining = response.headers?.['x-ratelimit-remaining']
+    const rateLimitRetry = response.headers?.['x-ratelimit-retry']
+
     if (response.data) {
       const orderData = response.data
       return NextResponse.json({
         success: true,
         order_id: orderData.order_id,
         order_status: orderData.order_status,
-        payment_status: orderData.payment_status,
-        payment_message: orderData.payment_message,
         order_amount: orderData.order_amount,
         order_currency: orderData.order_currency,
         customer_details: orderData.customer_details,
         payment_details: orderData.payment_details,
+        // payment_message is available in payment_details if payment exists
+        payment_message: orderData.payment_details?.payment_message || 
+          (orderData.order_status === 'PAID' ? 'Payment successful' : 'Payment pending'),
+        rateLimitRemaining: rateLimitRemaining ? parseInt(rateLimitRemaining) : undefined,
       })
     } else {
       return NextResponse.json(
@@ -45,11 +58,39 @@ export async function GET(request: NextRequest) {
       )
     }
   } catch (error: any) {
-    console.error('Error verifying Cashfree order:', error)
+    // Extract Cashfree error details
+    const cashfreeError = extractCashfreeError(error)
+    
+    // Log detailed error for developers (not shown to users)
+    logErrorForDevelopers(cashfreeError, 'Verify Order API')
+    
+    // Check if it's a rate limit error
+    if (isRateLimitError(error)) {
+      const retryAfter = getRetryAfter(error)
+      const userMessage = getUserFriendlyError(cashfreeError)
+      
+      return NextResponse.json(
+        { 
+          error: userMessage,
+          rateLimitError: true,
+          retryAfter: retryAfter,
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': retryAfter.toString(),
+          }
+        }
+      )
+    }
+    
+    // Get user-friendly error message (hide technical details)
+    const userMessage = getUserFriendlyError(cashfreeError)
+    
+    // Return user-friendly error (technical details logged but not sent)
     return NextResponse.json(
       { 
-        error: 'Failed to verify order',
-        details: error.response?.data || error.message 
+        error: userMessage,
       },
       { status: 500 }
     )
