@@ -197,24 +197,27 @@ export default function CheckoutPage() {
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Last name is required'
     }
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required'
-    }
-    if (!formData.location.trim()) {
-      newErrors.location = 'Location is required'
-    }
     if (!formData.mobileNumber.trim()) {
       newErrors.mobileNumber = 'Mobile number is required'
     } else if (!/^[6-9]\d{9}$/.test(formData.mobileNumber.trim())) {
       newErrors.mobileNumber = 'Please enter a valid 10-digit mobile number'
     }
-    if (!formData.pinCode.trim()) {
-      newErrors.pinCode = 'Pin code is required'
-    } else if (!/^\d{6}$/.test(formData.pinCode.trim())) {
-      newErrors.pinCode = 'Please enter a valid 6-digit pin code'
+    if (!formData.landmark.trim()) {
+      newErrors.landmark = 'Landmark is required'
     }
 
     setErrors(newErrors)
+    
+    // Scroll to first error field
+    if (Object.keys(newErrors).length > 0) {
+      const firstErrorField = Object.keys(newErrors)[0]
+      const element = document.getElementById(firstErrorField)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        element.focus()
+      }
+    }
+    
     return Object.keys(newErrors).length === 0
   }
 
@@ -297,7 +300,7 @@ export default function CheckoutPage() {
                     value={formData.firstName}
                     onChange={handleInputChange}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                      errors.firstName ? 'border-red-500' : 'border-gray-300'
+                      errors.firstName ? 'border-red-500 border-2' : 'border-gray-300'
                     }`}
                     placeholder="Enter first name"
                   />
@@ -316,7 +319,7 @@ export default function CheckoutPage() {
                     value={formData.lastName}
                     onChange={handleInputChange}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                      errors.lastName ? 'border-red-500' : 'border-gray-300'
+                      errors.lastName ? 'border-red-500 border-2' : 'border-gray-300'
                     }`}
                     placeholder="Enter last name"
                   />
@@ -339,7 +342,7 @@ export default function CheckoutPage() {
                   onChange={handleInputChange}
                   maxLength={10}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    errors.mobileNumber ? 'border-red-500' : 'border-gray-300'
+                    errors.mobileNumber ? 'border-red-500 border-2' : 'border-gray-300'
                   }`}
                   placeholder="Enter 10-digit mobile number"
                 />
@@ -360,7 +363,7 @@ export default function CheckoutPage() {
                   onChange={handleInputChange}
                   rows={3}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                    errors.address ? 'border-red-500' : 'border-gray-300'
+                    errors.address ? 'border-red-500 border-2' : 'border-gray-300'
                   }`}
                   placeholder="Enter your complete address"
                 />
@@ -383,7 +386,7 @@ export default function CheckoutPage() {
                       value={formData.location}
                       onChange={handleInputChange}
                       className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                        errors.location ? 'border-red-500' : 'border-gray-300'
+                        errors.location ? 'border-red-500 border-2' : 'border-gray-300'
                       }`}
                       placeholder="Enter location/city"
                     />
@@ -417,7 +420,7 @@ export default function CheckoutPage() {
                     onChange={handleInputChange}
                     maxLength={6}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-                      errors.pinCode ? 'border-red-500' : 'border-gray-300'
+                      errors.pinCode ? 'border-red-500 border-2' : 'border-gray-300'
                     }`}
                     placeholder="Enter 6-digit pin code"
                   />
@@ -430,7 +433,7 @@ export default function CheckoutPage() {
               {/* Landmark */}
               <div>
                 <label htmlFor="landmark" className="block text-sm font-medium text-gray-700 mb-2">
-                  Landmark (Optional)
+                  Landmark <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -438,9 +441,14 @@ export default function CheckoutPage() {
                   name="landmark"
                   value={formData.landmark}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="Enter nearby landmark (optional)"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    errors.landmark ? 'border-red-500 border-2' : 'border-gray-300'
+                  }`}
+                  placeholder="Enter nearby landmark"
                 />
+                {errors.landmark && (
+                  <p className="mt-1 text-sm text-red-500">{errors.landmark}</p>
+                )}
               </div>
 
               {/* Process to Pay Button - Inside Form */}
