@@ -32,12 +32,14 @@ export default function CartPage() {
         const grouped: { [key: string]: CartItem } = {}
         
         items.forEach((item: CartItem) => {
+          // Ensure price is a number
+          const price = typeof item.price === 'number' ? item.price : parseFloat(String(item.price)) || 0
           // Include image index in the grouping key so each color/image is separate
           const key = `${item.id}-${item.selectedSize || ''}-${item.selectedColor || ''}-${item.selectedImageIndex !== undefined ? item.selectedImageIndex : ''}`
           if (grouped[key]) {
             grouped[key].quantity += 1
           } else {
-            grouped[key] = { ...item, quantity: 1 }
+            grouped[key] = { ...item, price: price, quantity: 1 }
           }
         })
         
@@ -133,7 +135,13 @@ export default function CartPage() {
     window.dispatchEvent(new Event('cartUpdated'))
   }
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  // Calculate subtotal - ensure price is a number and handle any edge cases
+  const subtotal = cart.reduce((sum, item) => {
+    const price = typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0
+    const qty = typeof item.quantity === 'number' ? item.quantity : parseInt(item.quantity) || 1
+    return sum + (price * qty)
+  }, 0)
+  
   // If threshold is 0, free shipping for all. Otherwise, free if above threshold, else ₹200
   const shipping = shippingSettings.freeShippingThreshold === 0
     ? 0
@@ -201,13 +209,19 @@ export default function CartPage() {
                   <div className="flex items-baseline gap-0.5 mb-4 price-text text-gray-900">
                     <span className="currency text-lg text-gray-900">₹</span>
                     <p className="text-2xl font-bold text-gray-900">
-                      {Math.floor(item.price).toLocaleString('en-IN')}
+                      {Math.floor(typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0).toLocaleString('en-IN')}
                     </p>
-                    {item.price % 1 !== 0 && (
+                    {(typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0) % 1 !== 0 && (
                       <span className="text-lg font-semibold text-gray-900">
-                        .{Math.round((item.price % 1) * 100).toString().padStart(2, '0')}
+                        .{Math.round(((typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0) % 1) * 100).toString().padStart(2, '0')}
                       </span>
                     )}
+                  </div>
+                  <div className="flex items-baseline gap-0.5 mb-2 text-sm text-gray-600">
+                    <span>Total for this item: ₹</span>
+                    <span className="font-semibold">
+                      {((typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0) * item.quantity).toLocaleString('en-IN')}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">

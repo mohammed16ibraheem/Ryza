@@ -100,7 +100,13 @@ export default function AllProductsPage() {
 
   const addToCart = (product: Product) => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]')
-    cart.push({ ...product, quantity: 1 })
+    // Ensure price is a number
+    const price = typeof product.price === 'number' ? product.price : parseFloat(product.price) || 0
+    cart.push({ 
+      ...product, 
+      price: price, // Ensure price is always a number
+      quantity: 1 
+    })
     localStorage.setItem('cart', JSON.stringify(cart))
     window.dispatchEvent(new Event('cartUpdated'))
     
