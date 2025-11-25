@@ -38,6 +38,15 @@ export async function GET(request: NextRequest) {
 
     if (response.data) {
       const orderData = response.data
+      
+      // Extract payment message from order status
+      let paymentMessage = 'Payment pending'
+      if (orderData.order_status === 'PAID') {
+        paymentMessage = 'Payment successful'
+      } else if (orderData.order_status === 'FAILED') {
+        paymentMessage = 'Payment failed'
+      }
+      
       return NextResponse.json({
         success: true,
         order_id: orderData.order_id,
@@ -45,10 +54,7 @@ export async function GET(request: NextRequest) {
         order_amount: orderData.order_amount,
         order_currency: orderData.order_currency,
         customer_details: orderData.customer_details,
-        payment_details: orderData.payment_details,
-        // payment_message is available in payment_details if payment exists
-        payment_message: orderData.payment_details?.payment_message || 
-          (orderData.order_status === 'PAID' ? 'Payment successful' : 'Payment pending'),
+        payment_message: paymentMessage,
         rateLimitRemaining: rateLimitRemaining ? parseInt(rateLimitRemaining) : undefined,
       })
     } else {
