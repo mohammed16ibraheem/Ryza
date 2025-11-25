@@ -263,8 +263,21 @@ export default function PaymentReturnPage() {
     verifyPayment()
   }, [orderId])
 
+  // Hide header on this page
+  useEffect(() => {
+    const header = document.querySelector('header')
+    const footer = document.querySelector('footer')
+    if (header) header.style.display = 'none'
+    if (footer) footer.style.display = 'none'
+    
+    return () => {
+      if (header) header.style.display = ''
+      if (footer) footer.style.display = ''
+    }
+  }, [])
+
   return (
-    <div className="pt-20 md:pt-24 min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-white rounded-xl shadow-lg p-8 md:p-12 text-center">
           {/* Logo */}
@@ -349,7 +362,7 @@ export default function PaymentReturnPage() {
                   Go to Home
                 </Link>
                 <Link
-                  href="/products"
+                  href="/"
                   className="px-8 py-3 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300 transition-colors text-lg"
                 >
                   Continue Shopping
