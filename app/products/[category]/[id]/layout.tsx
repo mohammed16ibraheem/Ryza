@@ -1,6 +1,4 @@
 import { Metadata } from 'next'
-
-import { Metadata } from 'next'
 import { list } from '@vercel/blob'
 
 const PRODUCTS_BLOB_PATH = 'data/products.json'
