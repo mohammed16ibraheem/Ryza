@@ -39,11 +39,6 @@ export default function PaymentReturnPage() {
             localStorage.removeItem('cart')
             localStorage.removeItem('pending_order')
             window.dispatchEvent(new Event('cartUpdated'))
-            
-            // Auto-redirect to home after 5 seconds
-            setTimeout(() => {
-              router.push('/')
-            }, 5000)
           } else {
             setPaymentStatus('failed')
             setOrderDetails(data)
@@ -140,11 +135,6 @@ export default function PaymentReturnPage() {
                   </div>
                 </div>
               )}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> You will be redirected to the home page in a few seconds...
-                </p>
-              </div>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
                   href="/"
