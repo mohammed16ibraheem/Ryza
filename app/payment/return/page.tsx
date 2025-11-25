@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import { FiCheckCircle, FiXCircle, FiLoader } from 'react-icons/fi'
 
 export default function PaymentReturnPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const orderId = searchParams.get('order_id')
   const [paymentStatus, setPaymentStatus] = useState<'loading' | 'success' | 'failed'>('loading')
   const [orderDetails, setOrderDetails] = useState<any>(null)
@@ -23,8 +25,13 @@ export default function PaymentReturnPage() {
         const data = await response.json()
 
         if (data.success) {
-          // Check if order is paid - order_status === 'PAID' means payment successful
-          if (data.order_status === 'PAID') {
+          // Check payment status - SUCCESS or PAID means payment successful
+          const isSuccess = data.payment_status === 'SUCCESS' || 
+                           data.order_status === 'PAID' ||
+                           data.payment_message?.includes('Success') ||
+                           data.payment_message?.includes('00::')
+          
+          if (isSuccess) {
             setPaymentStatus('success')
             setOrderDetails(data)
             
@@ -32,6 +39,11 @@ export default function PaymentReturnPage() {
             localStorage.removeItem('cart')
             localStorage.removeItem('pending_order')
             window.dispatchEvent(new Event('cartUpdated'))
+            
+            // Auto-redirect to home after 5 seconds
+            setTimeout(() => {
+              router.push('/')
+            }, 5000)
           } else {
             setPaymentStatus('failed')
             setOrderDetails(data)
@@ -62,6 +74,23 @@ export default function PaymentReturnPage() {
     <div className="pt-20 md:pt-24 min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-white rounded-xl shadow-lg p-8 md:p-12 text-center">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <Link href="/" className="flex items-center gap-3">
+              <Image
+                src="/logo.png"
+                alt="Ryza"
+                width={60}
+                height={60}
+                className="object-contain"
+                priority
+              />
+              <span className="text-3xl md:text-4xl font-bold text-primary-600" style={{ fontFamily: 'inherit' }}>
+                Ryza
+              </span>
+            </Link>
+          </div>
+
           {paymentStatus === 'loading' && (
             <>
               <div className="flex justify-center mb-6">
@@ -84,8 +113,11 @@ export default function PaymentReturnPage() {
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
                 Payment Successful!
               </h1>
+              <p className="text-lg text-gray-700 mb-2 font-semibold">
+                Thank you for your purchase!
+              </p>
               <p className="text-gray-600 mb-6">
-                Thank you for your purchase. Your order has been confirmed.
+                Our support team will contact you soon for delivery. We'll process your order faster!
               </p>
               {orderDetails && (
                 <div className="bg-gray-50 rounded-lg p-6 mb-6 text-left">
@@ -108,18 +140,23 @@ export default function PaymentReturnPage() {
                   </div>
                 </div>
               )}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> You will be redirected to the home page in a few seconds...
+                </p>
+              </div>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
-                  href="/products"
-                  className="px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
-                >
-                  Continue Shopping
-                </Link>
-                <Link
                   href="/"
-                  className="px-6 py-3 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                  className="px-8 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors text-lg"
                 >
                   Go to Home
+                </Link>
+                <Link
+                  href="/products"
+                  className="px-8 py-3 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300 transition-colors text-lg"
+                >
+                  Continue Shopping
                 </Link>
               </div>
             </>

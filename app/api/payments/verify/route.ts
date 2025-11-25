@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Cashfree, CFEnvironment } from 'cashfree-pg'
+import { list } from '@vercel/blob'
 import { 
   getUserFriendlyError, 
   isRateLimitError, 
@@ -28,7 +29,49 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Fetch order details
+    // First, try to get payment status from webhook data (more reliable)
+    try {
+      const blobPath = `payments/${orderId}.json`
+      const token = process.env.BLOB_READ_WRITE_TOKEN
+      
+      if (token) {
+        // List blobs with the specific path
+        const { blobs } = await list({
+          prefix: blobPath,
+          token,
+        })
+        
+        if (blobs && blobs.length > 0) {
+          // Fetch the blob content (it's public, so we can fetch directly)
+          const blob = blobs[0]
+          const response = await fetch(blob.url)
+          const webhookData = await response.json()
+          
+          if (webhookData && webhookData.payment_status) {
+            // Use webhook data if available
+            const isSuccess = webhookData.payment_status === 'SUCCESS' || 
+                             webhookData.order_status === 'PAID'
+            
+            return NextResponse.json({
+              success: true,
+              order_id: webhookData.order_id,
+              order_status: webhookData.order_status || (isSuccess ? 'PAID' : 'PENDING'),
+              payment_status: webhookData.payment_status,
+              order_amount: webhookData.order_amount,
+              order_currency: 'INR',
+              customer_details: webhookData.customer_details,
+              payment_message: webhookData.payment_message || 
+                (isSuccess ? 'Payment successful' : 'Payment pending'),
+            })
+          }
+        }
+      }
+    } catch (blobError) {
+      // If webhook data not found, fallback to API
+      console.log('Webhook data not found, using API:', blobError)
+    }
+
+    // Fallback: Fetch order details from API
     const version = '2023-08-01'
     const response = await cashfree.PGFetchOrder(version, orderId)
 

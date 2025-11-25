@@ -26,6 +26,15 @@ interface ShippingInfo {
   pinCode: string
 }
 
+// Generate unique order ID helper (browser-safe)
+function generateOrderId(): string {
+  const timestamp = Date.now()
+  const random1 = Math.random().toString(36).substring(2, 11)
+  const random2 = Math.random().toString(36).substring(2, 11)
+  const performanceId = typeof performance !== 'undefined' && performance.now ? Math.floor(performance.now() * 1000).toString(36) : ''
+  return `ORDER_${timestamp}_${random1}_${random2}${performanceId ? '_' + performanceId : ''}`
+}
+
 export default function CheckoutPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [shippingSettings, setShippingSettings] = useState({
@@ -249,7 +258,7 @@ export default function CheckoutPage() {
 
     try {
       // Generate unique order ID
-      const orderId = `ORDER_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const orderId = generateOrderId()
       
       // Create order via API
       const response = await fetch('/api/payments/create-order', {
