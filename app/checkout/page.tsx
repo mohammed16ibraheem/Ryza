@@ -593,15 +593,6 @@ export default function CheckoutPage() {
                       className="text-primary-600 hover:text-primary-700 underline font-medium"
                     >
                       terms and conditions
-                    </a>{' '}
-                    of{' '}
-                    <a
-                      href="https://theryza.com/returns"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-700 underline font-medium"
-                    >
-                      https://theryza.com/returns
                     </a>
                   </span>
                 </label>
