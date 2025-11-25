@@ -54,6 +54,7 @@ export default function CheckoutPage() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [showPaymentMethods, setShowPaymentMethods] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const router = useRouter()
   const BASE_SHIPPING_COST = 200
 
@@ -239,6 +240,12 @@ export default function CheckoutPage() {
     e.preventDefault()
     
     if (!validateForm()) {
+      return
+    }
+
+    // Check if terms are accepted
+    if (!termsAccepted) {
+      alert('Please accept the terms and conditions to proceed')
       return
     }
 
@@ -568,8 +575,43 @@ export default function CheckoutPage() {
                 )}
               </div>
 
+              {/* Terms and Conditions Checkbox */}
+              <div className="pt-4 border-t border-gray-200">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    className="mt-1 w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
+                  />
+                  <span className="text-sm text-gray-700">
+                    I have read the{' '}
+                    <a
+                      href="https://theryza.com/returns"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-600 hover:text-primary-700 underline font-medium"
+                    >
+                      terms and conditions
+                    </a>{' '}
+                    of{' '}
+                    <a
+                      href="https://theryza.com/returns"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary-600 hover:text-primary-700 underline font-medium"
+                    >
+                      https://theryza.com/returns
+                    </a>
+                  </span>
+                </label>
+                {!termsAccepted && showPaymentMethods && (
+                  <p className="mt-2 text-sm text-red-500">Please accept the terms and conditions to proceed</p>
+                )}
+              </div>
+
               {/* Payment Method Selection */}
-              {showPaymentMethods && (
+              {showPaymentMethods && termsAccepted && (
                 <div className="pt-4 border-t border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Payment Method</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -673,7 +715,7 @@ export default function CheckoutPage() {
               <div className="pt-4 border-t border-gray-200">
                 <button
                   type="submit"
-                  disabled={isProcessingPayment}
+                  disabled={isProcessingPayment || (!termsAccepted && !showPaymentMethods)}
                   className="w-full py-4 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors touch-manipulation min-h-[44px] text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isProcessingPayment ? (
@@ -687,6 +729,11 @@ export default function CheckoutPage() {
                     'Process to Pay'
                   )}
                 </button>
+                {!termsAccepted && !showPaymentMethods && (
+                  <p className="mt-2 text-sm text-gray-600 text-center">
+                    Please accept the terms and conditions to proceed
+                  </p>
+                )}
               </div>
             </form>
           </div>
