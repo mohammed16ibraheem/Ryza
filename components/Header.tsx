@@ -206,7 +206,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2 sm:space-x-3 touch-manipulation group hover:opacity-90 transition-opacity ml-6 sm:ml-8 md:ml-10">
-            <div className="relative flex-shrink-0 self-center -mt-1 sm:-mt-1.5 md:-mt-2">
+            <div className="relative flex-shrink-0">
               <Image
                 src="/logo.png"
                 alt="Ryza Logo"
