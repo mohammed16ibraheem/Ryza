@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
         success: true,
         order_id: response.data.order_id,
         payment_session_id: response.data.payment_session_id,
-        order_token: response.data.order_token,
       })
     } else {
       return NextResponse.json(

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FiArrowLeft, FiMapPin, FiNavigation, FiCreditCard, FiSmartphone, FiWallet, FiBank, FiDollarSign } from 'react-icons/fi'
+import { FiArrowLeft, FiMapPin, FiNavigation, FiCreditCard, FiSmartphone, FiDollarSign, FiPocket, FiHome } from 'react-icons/fi'
 
 interface CartItem {
   id: number
@@ -593,7 +593,7 @@ export default function CheckoutPage() {
                           : 'border-gray-300 hover:border-primary-300'
                       }`}
                     >
-                      <FiWallet className={`w-6 h-6 mx-auto mb-2 ${
+                      <FiPocket className={`w-6 h-6 mx-auto mb-2 ${
                         selectedPaymentMethod === 'wallet' ? 'text-primary-600' : 'text-gray-600'
                       }`} />
                       <p className={`text-sm font-medium ${
@@ -611,7 +611,7 @@ export default function CheckoutPage() {
                           : 'border-gray-300 hover:border-primary-300'
                       }`}
                     >
-                      <FiBank className={`w-6 h-6 mx-auto mb-2 ${
+                      <FiHome className={`w-6 h-6 mx-auto mb-2 ${
                         selectedPaymentMethod === 'netbanking' ? 'text-primary-600' : 'text-gray-600'
                       }`} />
                       <p className={`text-sm font-medium ${
