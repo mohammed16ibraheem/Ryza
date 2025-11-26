@@ -196,7 +196,7 @@ images/
 
 **Email Configuration:**
 - Domain must be verified in Resend dashboard
-- Emails are sent from `orders@send.theryza.com`
+- Emails are sent from `orders@theryza.com`
 - Recipient email: `ryzathehijabhouse@gmail.com`
 - Only sent on successful payments
 

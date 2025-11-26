@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
     const orderAmount = body?.data?.order?.order_amount
     const customerDetails = body?.data?.customer_details
     const cfPaymentId = body?.data?.payment?.cf_payment_id
+    const paymentMethod = body?.data?.payment?.payment_method || body?.data?.payment?.payment_group || 'Online Payment'
     
     if (orderId) {
       // Check for idempotency - prevent processing same webhook twice
@@ -169,6 +170,7 @@ export async function POST(request: NextRequest) {
                     payment_status: paymentStatus,
                     order_status: orderStatus,
                     payment_message: paymentMessage,
+                    payment_method: paymentMethod,
                     customer_details: customerDetails,
                     cf_payment_id: cfPaymentId,
                   },

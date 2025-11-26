@@ -1,6 +1,10 @@
 import { Metadata } from 'next'
 import { list } from '@vercel/blob'
 
+// Force dynamic rendering for product pages to prevent build timeouts
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const PRODUCTS_BLOB_PATH = 'data/products.json'
 
 // Helper function to get products from Blob storage (same as API route)
@@ -45,8 +49,16 @@ async function getProductsFromBlob(): Promise<any[]> {
 export async function generateMetadata({ params }: { params: { category: string; id: string } }): Promise<Metadata> {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://theryza.com'
   
-  // Fetch product data to generate dynamic metadata
+  // Fetch product data to generate dynamic metadata with timeout protection
   try {
+    // Add timeout to prevent hanging during build
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Metadata generation timeout')), 5000) // 5 second timeout
+    )
+    
+    const productsPromise = getProductsFromBlob()
+    const products = await Promise.race([productsPromise, timeoutPromise]) as any[]
+    
     const categoryMap: { [key: string]: string } = {
       'salah-essential': 'Salah Essential',
       'dresses': 'Salah Essential',
@@ -59,7 +71,6 @@ export async function generateMetadata({ params }: { params: { category: string;
     }
     
     const apiCategory = categoryMap[params.category] || params.category
-    const products = await getProductsFromBlob()
     const filteredProducts = products.filter((p: any) => p.category === apiCategory)
     const product = filteredProducts.find((p: any) => p.id === params.id)
     

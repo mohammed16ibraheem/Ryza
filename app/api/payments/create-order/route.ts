@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         return_url: returnUrl || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://theryza.com'}/payment/return`,
         notify_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://theryza.com'}/api/payments/webhook`,
       },
-      order_note: 'Order from Ryza - Modest Fashion Store',
+      order_note: 'Order from Ryza - Hijab House',
     }
 
     // Create order using Cashfree SDK

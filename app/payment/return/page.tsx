@@ -7,6 +7,10 @@ import Image from 'next/image'
 import { FiCheckCircle, FiXCircle, FiLoader } from 'react-icons/fi'
 import jsPDF from 'jspdf'
 
+// Force dynamic rendering - this page should never be statically generated
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default function PaymentReturnPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -66,7 +70,7 @@ export default function PaymentReturnPage() {
     
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
-    doc.text('Modest Fashion Store', margin, 32)
+    doc.text('Hijab House', margin, 32)
 
     yPos = 50
 
@@ -203,7 +207,7 @@ export default function PaymentReturnPage() {
     doc.setFontSize(8)
     doc.setTextColor(128, 128, 128)
     doc.text('Thank you for your purchase!', margin, pageHeight - 20)
-    doc.text('Ryza - Modest Fashion Store', margin, pageHeight - 15)
+    doc.text('Ryza - Hijab House', margin, pageHeight - 15)
     doc.text('For support, contact us via Instagram or WhatsApp', margin, pageHeight - 10)
 
     // Save PDF

@@ -43,6 +43,10 @@ async function getProductsFromBlob(): Promise<any[]> {
   }
 }
 
+// Add timeout handling to prevent build failures
+export const dynamic = 'force-dynamic'
+export const revalidate = 3600 // Revalidate every hour
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
@@ -78,9 +82,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ]
 
-  // Fetch products for dynamic product pages
+  // Fetch products for dynamic product pages with timeout protection
   try {
-    const products = await getProductsFromBlob()
+    // Add timeout to prevent hanging during build
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Sitemap generation timeout')), 10000) // 10 second timeout
+    )
+    
+    const productsPromise = getProductsFromBlob()
+    const products = await Promise.race([productsPromise, timeoutPromise]) as any[]
+
+    if (!products || products.length === 0) {
+      return staticPages
+    }
 
     const productPages: MetadataRoute.Sitemap = products.map((product: any) => {
       const category = product.category?.toLowerCase().replace(/\s+/g, '-') || 'products'
@@ -107,6 +121,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [...staticPages, ...categoryPages, ...productPages]
   } catch (error) {
     console.error('Error generating sitemap:', error)
+    // Return static pages only if dynamic generation fails
     return staticPages
   }
 }

@@ -1,6 +1,10 @@
 import { Metadata } from 'next'
 import { productsMetadata } from '../../metadata'
 
+// Force dynamic rendering to prevent build timeouts
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const categoryKeywords: { [key: string]: string[] } = {
   'salah-essential': [
     'hyderabad',

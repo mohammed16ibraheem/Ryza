@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Increase static page generation timeout to prevent build failures
+  staticPageGenerationTimeout: 120, // 120 seconds (default is 60)
   images: {
     // Allow images from Vercel Blob storage
     remotePatterns: [

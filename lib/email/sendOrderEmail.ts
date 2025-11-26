@@ -38,6 +38,7 @@ interface OrderDetails {
   payment_status?: string
   order_status?: string
   payment_message?: string
+  payment_method?: string
   customer_details?: {
     customer_name?: string
     customer_phone?: string
@@ -99,10 +100,15 @@ export async function sendOrderConfirmationEmail(
       const itemQuantity = item.quantity || 1
       const itemTotal = itemPrice * itemQuantity
       
-      // Use product image URL (full URL if it's already a full URL, otherwise prepend site URL)
-      const imageUrl = item.image?.startsWith('http') 
+      // For email deliverability, use site domain for images
+      // If image is from Vercel Blob, we'll use it directly (Resend will handle it)
+      // For better deliverability, consider proxying images through your domain
+      let imageUrl = item.image?.startsWith('http') 
         ? item.image 
         : `${siteUrl}${item.image?.startsWith('/') ? '' : '/'}${item.image || '/placeholder.jpg'}`
+      
+      // Note: Vercel Blob URLs work but for best deliverability, 
+      // consider using a CDN subdomain like cdn.theryza.com or images.theryza.com
 
       // Escape user input to prevent XSS
       const escapedName = escapeHtml(item.name)
@@ -165,7 +171,7 @@ export async function sendOrderConfirmationEmail(
                 RYZA
               </h1>
               <p style="margin: 8px 0 0 0; color: #ffffff; font-size: 14px; opacity: 0.9;">
-                Modest Fashion Store
+                Hijab House
               </p>
             </td>
           </tr>
@@ -210,6 +216,12 @@ export async function sendOrderConfirmationEmail(
                   <td style="padding: 8px 0; color: #111827; font-size: 14px; font-family: monospace;">${escapeHtml(String(orderDetails.cf_payment_id))}</td>
                 </tr>
                 ` : ''}
+                ${orderDetails.payment_method ? `
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Payment Method:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${escapeHtml(orderDetails.payment_method)}</td>
+                </tr>
+                ` : ''}
               </table>
             </td>
           </tr>
@@ -234,8 +246,12 @@ export async function sendOrderConfirmationEmail(
               </h3>
               <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f9fafb; padding: 20px; border-radius: 8px;">
                 <tr>
-                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 40%;">Full Name:</td>
-                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${escapeHtml(shippingInfo.firstName)} ${escapeHtml(shippingInfo.lastName)}</td>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 40%;">First Name:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${escapeHtml(shippingInfo.firstName)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Last Name:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${escapeHtml(shippingInfo.lastName)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Mobile Number:</td>
@@ -250,15 +266,13 @@ export async function sendOrderConfirmationEmail(
                   <td style="padding: 8px 0; color: #111827; font-size: 14px;">${escapeHtml(shippingInfo.location)}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Pin Code:</td>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Pin/Postal Code:</td>
                   <td style="padding: 8px 0; color: #111827; font-size: 14px;">${escapeHtml(shippingInfo.pinCode)}</td>
                 </tr>
-                ${shippingInfo.landmark ? `
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Landmark:</td>
-                  <td style="padding: 8px 0; color: #111827; font-size: 14px;">${escapeHtml(shippingInfo.landmark)}</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px;">${escapeHtml(shippingInfo.landmark || 'N/A')}</td>
                 </tr>
-                ` : ''}
               </table>
             </td>
           </tr>
@@ -299,7 +313,7 @@ export async function sendOrderConfirmationEmail(
                 For support, contact us via Instagram or WhatsApp
               </p>
               <p style="margin: 5px 0 0 0; color: #9ca3af; font-size: 12px;">
-                © ${new Date().getFullYear()} Ryza - Modest Fashion Store. All rights reserved.
+                © ${new Date().getFullYear()} Ryza - Hijab House. All rights reserved.
               </p>
             </td>
           </tr>
