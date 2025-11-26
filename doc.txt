@@ -3,7 +3,8 @@ Follow the steps to send an email using the Resend API.
 Add an API Key
 Use the following generated key to authenticate requests
 
-re_cRTDwKQg_FuPn1WbLZFPGeo4TFcko9aRd
+
+
 
 
 Send an email

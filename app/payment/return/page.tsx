@@ -277,21 +277,21 @@ export default function PaymentReturnPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-white rounded-xl shadow-lg p-8 md:p-12 text-center">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-3 py-4 sm:py-8">
+      <div className="w-full max-w-2xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 md:p-8 lg:p-12 text-center">
           {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <Link href="/" className="flex items-center gap-3">
+          <div className="flex justify-center mb-4 sm:mb-6 md:mb-8">
+            <Link href="/" className="flex items-center gap-2 sm:gap-3">
               <Image
                 src="/logo.png"
                 alt="Ryza"
-                width={60}
-                height={60}
-                className="object-contain"
+                width={50}
+                height={50}
+                className="object-contain w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16"
                 priority
               />
-              <span className="text-3xl md:text-4xl font-bold text-primary-600" style={{ fontFamily: 'inherit' }}>
+              <span className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-600" style={{ fontFamily: 'inherit' }}>
                 Ryza
               </span>
             </Link>
@@ -299,71 +299,73 @@ export default function PaymentReturnPage() {
 
           {paymentStatus === 'loading' && (
             <>
-              <div className="flex justify-center mb-6">
-                <FiLoader className="w-16 h-16 text-primary-600 animate-spin" />
+              <div className="flex justify-center mb-4 sm:mb-6">
+                <FiLoader className="w-12 h-12 sm:w-16 sm:h-16 text-primary-600 animate-spin" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 sm:mb-4 px-2">
                 Verifying Payment...
               </h1>
-              <p className="text-gray-600">Please wait while we confirm your payment.</p>
+              <p className="text-sm sm:text-base text-gray-600 px-2">Please wait while we confirm your payment.</p>
             </>
           )}
 
           {paymentStatus === 'success' && (
             <>
-              <div className="flex justify-center mb-6">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-                  <FiCheckCircle className="w-12 h-12 text-green-600" />
+              <div className="flex justify-center mb-4 sm:mb-6">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center">
+                  <FiCheckCircle className="w-10 h-10 sm:w-12 sm:h-12 text-green-600" />
                 </div>
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 sm:mb-4 px-2">
                 Payment Successful!
               </h1>
-              <p className="text-lg text-gray-700 mb-2 font-semibold">
+              <p className="text-base sm:text-lg text-gray-700 mb-2 font-semibold px-2">
                 Thank you for your purchase!
               </p>
-              <p className="text-gray-600 mb-6">
+              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 px-2">
                 Our support team will contact you soon for delivery. We'll process your order faster!
               </p>
               {orderDetails && (
-                <div className="bg-gray-50 rounded-lg p-6 mb-6 text-left">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-semibold text-gray-900">Order Details</h3>
+                <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 text-left">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 sm:mb-4 gap-2">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">Order Details</h3>
                     <span
                       onClick={generateInvoice}
-                      className="text-red-600 font-semibold cursor-pointer hover:text-red-700 hover:underline transition-colors"
+                      className="text-red-600 text-sm sm:text-base font-semibold cursor-pointer hover:text-red-700 hover:underline transition-colors active:scale-95"
                     >
                       Invoice
                     </span>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Order ID:</span>
-                      <span className="font-medium text-gray-900">{orderDetails.order_id}</span>
+                  <div className="space-y-2.5 sm:space-y-3 text-xs sm:text-sm">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                      <span className="text-gray-600 font-medium sm:font-normal">Order ID:</span>
+                      <span className="font-medium text-gray-900 break-all sm:break-normal text-right sm:text-left">
+                        {orderDetails.order_id}
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Amount:</span>
-                      <span className="font-medium text-gray-900">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                      <span className="text-gray-600 font-medium sm:font-normal">Amount:</span>
+                      <span className="font-medium text-gray-900 text-right sm:text-left">
                         ₹{orderDetails.order_amount?.toLocaleString('en-IN')}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
-                      <span className="font-medium text-green-600">Paid</span>
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+                      <span className="text-gray-600 font-medium sm:font-normal">Status:</span>
+                      <span className="font-medium text-green-600 text-right sm:text-left">Paid</span>
                     </div>
                   </div>
                 </div>
               )}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-2">
                 <Link
                   href="/"
-                  className="px-8 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors text-lg"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 active:bg-primary-800 transition-colors text-base sm:text-lg text-center"
                 >
                   Go to Home
                 </Link>
                 <Link
                   href="/"
-                  className="px-8 py-3 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300 transition-colors text-lg"
+                  className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300 active:bg-gray-400 transition-colors text-base sm:text-lg text-center"
                 >
                   Continue Shopping
                 </Link>
@@ -373,32 +375,32 @@ export default function PaymentReturnPage() {
 
           {paymentStatus === 'failed' && (
             <>
-              <div className="flex justify-center mb-6">
-                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
-                  <FiXCircle className="w-12 h-12 text-red-600" />
+              <div className="flex justify-center mb-4 sm:mb-6">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 rounded-full flex items-center justify-center">
+                  <FiXCircle className="w-10 h-10 sm:w-12 sm:h-12 text-red-600" />
                 </div>
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 sm:mb-4 px-2">
                 Payment Failed
               </h1>
-              <p className="text-gray-600 mb-6">
+              <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6 px-2">
                 Your payment could not be processed. Please try again or use a different payment method.
               </p>
               {orderDetails && orderDetails.payment_message && (
-                <div className="bg-red-50 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-red-700">{orderDetails.payment_message}</p>
+                <div className="bg-red-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 mx-2">
+                  <p className="text-xs sm:text-sm text-red-700">{orderDetails.payment_message}</p>
                 </div>
               )}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-2">
                 <Link
                   href="/checkout"
-                  className="px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
+                  className="w-full sm:w-auto px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 active:bg-primary-800 transition-colors text-base sm:text-lg text-center"
                 >
                   Try Again
                 </Link>
                 <Link
                   href="/cart"
-                  className="px-6 py-3 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                  className="w-full sm:w-auto px-6 py-3 bg-gray-200 text-gray-900 rounded-lg font-semibold hover:bg-gray-300 active:bg-gray-400 transition-colors text-base sm:text-lg text-center"
                 >
                   Back to Cart
                 </Link>
