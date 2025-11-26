@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
               customer_details: webhookData.customer_details,
               payment_message: webhookData.payment_message || 
                 (isSuccess ? 'Payment successful' : 'Payment pending'),
+              payment_method: webhookData.payment_method || webhookData.payment_group || undefined,
             })
           }
         }

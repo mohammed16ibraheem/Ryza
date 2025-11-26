@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FiArrowLeft, FiMapPin, FiNavigation, FiCreditCard, FiSmartphone, FiDollarSign, FiPocket, FiHome } from 'react-icons/fi'
+import { FiArrowLeft, FiMapPin, FiNavigation } from 'react-icons/fi'
 
 interface CartItem {
   id: number
@@ -51,9 +51,8 @@ export default function CheckoutPage() {
     pinCode: '',
   })
   const [errors, setErrors] = useState<Partial<ShippingInfo>>({})
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
-  const [showPaymentMethods, setShowPaymentMethods] = useState(false)
+  const [showPaymentInfo, setShowPaymentInfo] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const router = useRouter()
   const BASE_SHIPPING_COST = 200
@@ -246,18 +245,6 @@ export default function CheckoutPage() {
     // Check if terms are accepted
     if (!termsAccepted) {
       alert('Please accept the terms and conditions to proceed')
-      return
-    }
-
-    // Show payment method selection
-    if (!showPaymentMethods) {
-      setShowPaymentMethods(true)
-      return
-    }
-
-    // Validate payment method selection
-    if (!selectedPaymentMethod) {
-      alert('Please select a payment method')
       return
     }
 
@@ -591,7 +578,10 @@ export default function CheckoutPage() {
                   <input
                     type="checkbox"
                     checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    onChange={(e) => {
+                      setTermsAccepted(e.target.checked)
+                      setShowPaymentInfo(e.target.checked)
+                    }}
                     className="mt-1 w-5 h-5 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-2"
                   />
                   <span className="text-sm text-gray-700">
@@ -606,109 +596,16 @@ export default function CheckoutPage() {
                     </a>
                   </span>
                 </label>
-                {!termsAccepted && showPaymentMethods && (
-                  <p className="mt-2 text-sm text-red-500">Please accept the terms and conditions to proceed</p>
-                )}
               </div>
 
-              {/* Payment Method Selection */}
-              {showPaymentMethods && termsAccepted && (
+              {/* Payment Methods Info Dropdown */}
+              {showPaymentInfo && termsAccepted && (
                 <div className="pt-4 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Payment Method</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {/* UPI */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPaymentMethod('upi')}
-                      className={`p-4 border-2 rounded-lg transition-all ${
-                        selectedPaymentMethod === 'upi'
-                          ? 'border-primary-600 bg-primary-50'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      <FiSmartphone className={`w-6 h-6 mx-auto mb-2 ${
-                        selectedPaymentMethod === 'upi' ? 'text-primary-600' : 'text-gray-600'
-                      }`} />
-                      <p className={`text-sm font-medium ${
-                        selectedPaymentMethod === 'upi' ? 'text-primary-600' : 'text-gray-700'
-                      }`}>UPI</p>
-                    </button>
-
-                    {/* Credit/Debit Cards */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPaymentMethod('card')}
-                      className={`p-4 border-2 rounded-lg transition-all ${
-                        selectedPaymentMethod === 'card'
-                          ? 'border-primary-600 bg-primary-50'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      <FiCreditCard className={`w-6 h-6 mx-auto mb-2 ${
-                        selectedPaymentMethod === 'card' ? 'text-primary-600' : 'text-gray-600'
-                      }`} />
-                      <p className={`text-sm font-medium ${
-                        selectedPaymentMethod === 'card' ? 'text-primary-600' : 'text-gray-700'
-                      }`}>Cards</p>
-                    </button>
-
-                    {/* E-Wallets */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPaymentMethod('wallet')}
-                      className={`p-4 border-2 rounded-lg transition-all ${
-                        selectedPaymentMethod === 'wallet'
-                          ? 'border-primary-600 bg-primary-50'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      <FiPocket className={`w-6 h-6 mx-auto mb-2 ${
-                        selectedPaymentMethod === 'wallet' ? 'text-primary-600' : 'text-gray-600'
-                      }`} />
-                      <p className={`text-sm font-medium ${
-                        selectedPaymentMethod === 'wallet' ? 'text-primary-600' : 'text-gray-700'
-                      }`}>Wallets</p>
-                    </button>
-
-                    {/* Net Banking */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPaymentMethod('netbanking')}
-                      className={`p-4 border-2 rounded-lg transition-all ${
-                        selectedPaymentMethod === 'netbanking'
-                          ? 'border-primary-600 bg-primary-50'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      <FiHome className={`w-6 h-6 mx-auto mb-2 ${
-                        selectedPaymentMethod === 'netbanking' ? 'text-primary-600' : 'text-gray-600'
-                      }`} />
-                      <p className={`text-sm font-medium ${
-                        selectedPaymentMethod === 'netbanking' ? 'text-primary-600' : 'text-gray-700'
-                      }`}>Net Banking</p>
-                    </button>
-
-                    {/* EMI */}
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPaymentMethod('emi')}
-                      className={`p-4 border-2 rounded-lg transition-all ${
-                        selectedPaymentMethod === 'emi'
-                          ? 'border-primary-600 bg-primary-50'
-                          : 'border-gray-300 hover:border-primary-300'
-                      }`}
-                    >
-                      <FiDollarSign className={`w-6 h-6 mx-auto mb-2 ${
-                        selectedPaymentMethod === 'emi' ? 'text-primary-600' : 'text-gray-600'
-                      }`} />
-                      <p className={`text-sm font-medium ${
-                        selectedPaymentMethod === 'emi' ? 'text-primary-600' : 'text-gray-700'
-                      }`}>EMI</p>
-                    </button>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-700">
+                      We accept: UPI (QR Scan & Pay), Credit Cards, Debit Cards, EMI
+                    </p>
                   </div>
-                  {!selectedPaymentMethod && (
-                    <p className="mt-2 text-sm text-red-500">Please select a payment method</p>
-                  )}
                 </div>
               )}
 
@@ -716,7 +613,7 @@ export default function CheckoutPage() {
               <div className="pt-4 border-t border-gray-200">
                 <button
                   type="submit"
-                  disabled={isProcessingPayment || (!termsAccepted && !showPaymentMethods)}
+                  disabled={isProcessingPayment || !termsAccepted}
                   className="w-full py-4 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors touch-manipulation min-h-[44px] text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isProcessingPayment ? (
@@ -724,13 +621,11 @@ export default function CheckoutPage() {
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       Processing...
                     </>
-                  ) : showPaymentMethods ? (
-                    'Proceed to Payment'
                   ) : (
-                    'Process to Pay'
+                    'Process to Payment'
                   )}
                 </button>
-                {!termsAccepted && !showPaymentMethods && (
+                {!termsAccepted && (
                   <p className="mt-2 text-sm text-gray-600 text-center">
                     Please accept the terms and conditions to proceed
                   </p>

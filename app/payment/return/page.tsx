@@ -93,8 +93,11 @@ export default function PaymentReturnPage() {
     
     yPos = addText(`Status: Paid`, margin, yPos, 10)
     
-    if (orderDetails?.payment_status) {
-      yPos = addText(`Payment Method: ${orderDetails.payment_status}`, margin, yPos, 10)
+    if (orderDetails?.payment_method) {
+      yPos = addText(`Payment Method: ${orderDetails.payment_method}`, margin, yPos, 10)
+    } else if (orderDetails?.payment_status) {
+      // Fallback to payment_status if payment_method not available
+      yPos = addText(`Payment Status: ${orderDetails.payment_status}`, margin, yPos, 10)
     }
     
     const currentDate = new Date().toLocaleDateString('en-IN', { 

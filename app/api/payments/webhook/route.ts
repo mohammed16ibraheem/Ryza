@@ -125,21 +125,22 @@ export async function POST(request: NextRequest) {
         // No existing data, continue processing
       }
       
-      // Store webhook data for verification (using Vercel Blob)
-      try {
-        const webhookData = {
-          order_id: orderId,
-          payment_status: paymentStatus,
-          order_status: orderStatus,
-          payment_message: paymentMessage,
-          order_amount: orderAmount,
-          customer_details: customerDetails,
-          cf_payment_id: cfPaymentId,
-          webhook_received_at: new Date().toISOString(),
-          type: body?.type,
-          webhook_signature_verified: !!signature && !!timestamp,
-          webhook_timestamp: timestamp,
-        }
+        // Store webhook data for verification (using Vercel Blob)
+        try {
+          const webhookData = {
+            order_id: orderId,
+            payment_status: paymentStatus,
+            order_status: orderStatus,
+            payment_message: paymentMessage,
+            payment_method: paymentMethod, // Store payment method
+            order_amount: orderAmount,
+            customer_details: customerDetails,
+            cf_payment_id: cfPaymentId,
+            webhook_received_at: new Date().toISOString(),
+            type: body?.type,
+            webhook_signature_verified: !!signature && !!timestamp,
+            webhook_timestamp: timestamp,
+          }
         
         // Store in Vercel Blob for retrieval (private access for security)
         await put(`payments/${orderId}.json`, JSON.stringify(webhookData), {
