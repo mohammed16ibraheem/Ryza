@@ -280,6 +280,16 @@ export default function CheckoutPage() {
           customerPhone: formData.mobileNumber,
           orderId: orderId,
           returnUrl: `${window.location.origin}/payment/return?order_id=${orderId}`,
+          cart: cart, // Send cart items for email
+          shippingInfo: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            address: formData.address,
+            location: formData.location,
+            mobileNumber: formData.mobileNumber,
+            landmark: formData.landmark,
+            pinCode: formData.pinCode,
+          },
         }),
       })
 

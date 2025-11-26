@@ -190,6 +190,8 @@ export default function ProductDetailPage() {
         selectedSize,
         selectedColor,
         selectedImageIndex: currentImageIndex, // Store which image index was selected (0, 1, 2, etc.)
+        description: product.description, // Include description for email
+        weight: product.weight, // Include weight for email
       })
     }
     localStorage.setItem('cart', JSON.stringify(cart))

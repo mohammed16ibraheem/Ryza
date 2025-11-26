@@ -12,6 +12,8 @@ A modern, full-featured e-commerce platform built with Next.js 14, TypeScript, a
 - 🛒 **Shopping Cart**: Client-side cart management
 - 🔍 **Product Filtering**: Filter by category and sub-category
 - 📦 **Vercel Blob Storage**: Cloud storage for images and videos
+- 💳 **Payment Gateway**: Cashfree integration for secure payments
+- 📧 **Email Notifications**: Automated order confirmation emails via Resend
 
 ## Tech Stack
 
@@ -44,7 +46,34 @@ npm install
 
 ### 3. Environment Variables
 
-The `BLOB_READ_WRITE_TOKEN` environment variable is automatically set by Vercel when you connect the Blob store to your project. No manual configuration needed!
+#### Required Environment Variables
+
+Add these to your Vercel project settings (Settings → Environment Variables):
+
+1. **BLOB_READ_WRITE_TOKEN**
+   - Automatically set by Vercel when you connect the Blob store
+   - No manual configuration needed
+
+2. **RESEND_API_KEY**
+   - Get your API key from [Resend Dashboard](https://resend.com/api-keys)
+   - Used for sending order confirmation emails
+   - Required for email functionality
+
+3. **CASHFREE_APP_ID**
+   - Your Cashfree App ID from Cashfree dashboard
+   - Required for payment processing
+
+4. **CASHFREE_SECRET_KEY**
+   - Your Cashfree Secret Key from Cashfree dashboard
+   - Required for payment processing
+
+5. **CASHFREE_WEBHOOK_SECRET** (Optional but recommended)
+   - Webhook secret for verifying Cashfree webhook signatures
+   - If not set, uses CASHFREE_SECRET_KEY as fallback
+
+6. **NEXT_PUBLIC_SITE_URL**
+   - Your site URL (e.g., `https://theryza.com`)
+   - Used for payment redirects and email links
 
 ### 4. Run Development Server
 
@@ -157,8 +186,19 @@ images/
 
 ### Environment Variables
 
-Vercel automatically manages:
-- `BLOB_READ_WRITE_TOKEN` - Set when Blob store is connected
+**Required:**
+- `BLOB_READ_WRITE_TOKEN` - Automatically set when Blob store is connected
+- `RESEND_API_KEY` - Your Resend API key for sending emails
+- `CASHFREE_APP_ID` - Your Cashfree App ID
+- `CASHFREE_SECRET_KEY` - Your Cashfree Secret Key
+- `CASHFREE_WEBHOOK_SECRET` - (Optional) Webhook secret for signature verification
+- `NEXT_PUBLIC_SITE_URL` - Your site URL (e.g., `https://theryza.com`)
+
+**Email Configuration:**
+- Domain must be verified in Resend dashboard
+- Emails are sent from `orders@send.theryza.com`
+- Recipient email: `ryzathehijabhouse@gmail.com`
+- Only sent on successful payments
 
 ## Free Tier Limits
 

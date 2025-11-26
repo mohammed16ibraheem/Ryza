@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { put, list } from '@vercel/blob'
 import crypto from 'crypto'
+import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderEmail'
 
 export const dynamic = 'force-dynamic'
 
@@ -144,6 +145,54 @@ export async function POST(request: NextRequest) {
           access: 'public', // Public for verification API, but contains no sensitive data
           contentType: 'application/json',
         })
+
+        // Send email only on successful payment
+        if (paymentStatus === 'SUCCESS' || orderStatus === 'PAID') {
+          try {
+            // Retrieve order data (cart + shipping) from blob
+            const orderDataPath = `orders/${orderId}.json`
+            const { blobs: orderBlobs } = await list({
+              prefix: orderDataPath,
+            })
+
+            if (orderBlobs && orderBlobs.length > 0) {
+              const orderBlob = orderBlobs[0]
+              const orderResponse = await fetch(orderBlob.url)
+              const orderData = await orderResponse.json()
+
+              if (orderData.cart && orderData.shippingInfo) {
+                // Send order confirmation email
+                const emailResult = await sendOrderConfirmationEmail(
+                  {
+                    order_id: orderId,
+                    order_amount: orderAmount || orderData.orderAmount,
+                    payment_status: paymentStatus,
+                    order_status: orderStatus,
+                    payment_message: paymentMessage,
+                    customer_details: customerDetails,
+                    cf_payment_id: cfPaymentId,
+                  },
+                  orderData.shippingInfo,
+                  orderData.cart
+                )
+
+                if (emailResult.success) {
+                  console.log('Order confirmation email sent successfully for order:', orderId)
+                } else {
+                  console.error('Failed to send order confirmation email:', emailResult.error)
+                  // Don't fail webhook if email fails - payment is still successful
+                }
+              } else {
+                console.warn('Order data missing cart or shipping info for email:', orderId)
+              }
+            } else {
+              console.warn('Order data not found in blob for email:', orderId)
+            }
+          } catch (emailError) {
+            console.error('Error sending order confirmation email:', emailError)
+            // Don't fail webhook if email fails - payment is still successful
+          }
+        }
       } catch (blobError) {
         console.error('Error storing webhook data:', blobError)
         // Continue even if blob storage fails
@@ -152,9 +201,9 @@ export async function POST(request: NextRequest) {
     
     // Here you can:
     // 1. Update order status in your database
-    // 2. Send confirmation emails
-    // 3. Update inventory
-    // 4. Trigger fulfillment processes
+    // 2. Update inventory
+    // 3. Trigger fulfillment processes
+    // (Email sending is handled above)
     
     return NextResponse.json({ 
       success: true,

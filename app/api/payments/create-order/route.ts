@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Cashfree, CFEnvironment } from 'cashfree-pg'
+import { put } from '@vercel/blob'
 import { 
   getUserFriendlyError, 
   isRateLimitError, 
@@ -26,6 +27,8 @@ export async function POST(request: NextRequest) {
       customerPhone,
       orderId,
       returnUrl,
+      cart, // Cart items with product details
+      shippingInfo, // Shipping details
     } = body
 
     // Validate required fields
@@ -34,6 +37,31 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields' },
         { status: 400 }
       )
+    }
+
+    // Store order details (cart + shipping) in blob for email sending later
+    if (cart && shippingInfo) {
+      try {
+        const orderData = {
+          orderId,
+          cart,
+          shippingInfo,
+          orderAmount,
+          customerName,
+          customerPhone,
+          customerEmail: customerEmail || `${customerPhone}@ryza.com`,
+          createdAt: new Date().toISOString(),
+        }
+        
+        await put(`orders/${orderId}.json`, JSON.stringify(orderData), {
+          access: 'public',
+          contentType: 'application/json',
+        })
+        console.log('Order data stored in blob for email:', orderId)
+      } catch (blobError) {
+        console.error('Error storing order data in blob:', blobError)
+        // Continue even if blob storage fails - order creation should still proceed
+      }
     }
 
     // Create order request
