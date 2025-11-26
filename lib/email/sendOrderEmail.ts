@@ -70,7 +70,8 @@ export async function sendOrderConfirmationEmail(
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://theryza.com'
     const recipientEmail = 'ryzathehijabhouse@gmail.com'
-    const fromEmail = 'orders@send.theryza.com'
+    // Use root domain instead of subdomain - must match verified domain in Resend
+    const fromEmail = 'orders@theryza.com'
 
     // Calculate totals
     const subtotal = cartItems.reduce((sum, item) => {
