@@ -15,6 +15,7 @@ interface Product {
   category: string
   description: string
   discount?: string
+  outOfStockImages?: number[]
 }
 
 const ITEMS_PER_PAGE = 12
@@ -68,6 +69,7 @@ export default function AllProductsPage() {
             category: categoryMap[p.category] || p.category.toLowerCase().replace(/\s+/g, '-'),
             description: p.description,
             discount: p.discount,
+            outOfStockImages: p.outOfStockImages || [],
           }
         })
         
@@ -194,6 +196,14 @@ export default function AllProductsPage() {
                               (e.target as HTMLImageElement).src = '/placeholder.jpg'
                             }}
                           />
+                          {/* Out of Stock Badge */}
+                          {product.outOfStockImages && product.outOfStockImages.includes(0) && (
+                            <div className="absolute inset-0 bg-red-500/30 flex items-center justify-center z-10 pointer-events-none">
+                              <div className="bg-red-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-bold text-sm sm:text-lg shadow-2xl border-2 border-white pointer-events-none">
+                                OUT OF STOCK
+                              </div>
+                            </div>
+                          )}
                           {product.discount && Number(product.discount) > 0 && (
                             <div className="absolute top-3 left-3 z-10">
                               <span className="inline-flex flex-col items-center justify-center bg-gradient-to-r from-red-500 via-pink-500 to-primary-600 text-white px-3 py-1.5 rounded-full shadow-lg text-xs font-bold">

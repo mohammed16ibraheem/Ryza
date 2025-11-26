@@ -20,8 +20,8 @@ export default function CartPage() {
   const [cartUpdated, setCartUpdated] = useState(0)
   const [shippingSettings, setShippingSettings] = useState({
     freeShippingThreshold: 0, // Default to 0 (free shipping) instead of 5000
+    shippingCost: 200, // Default shipping cost
   })
-  const BASE_SHIPPING_COST = 200 // Fixed shipping cost for orders below threshold
 
   useEffect(() => {
     const loadCart = () => {
@@ -80,15 +80,19 @@ export default function CartPage() {
         const data = await response.json()
         console.log('Shipping settings fetched:', data) // Debug log
         
-        if (data.freeShippingThreshold !== undefined) {
+        if (data.freeShippingThreshold !== undefined || data.shippingCost !== undefined) {
           const threshold = typeof data.freeShippingThreshold === 'number' 
             ? data.freeShippingThreshold 
             : parseFloat(data.freeShippingThreshold) || 0
+          const shippingCost = typeof data.shippingCost === 'number'
+            ? data.shippingCost
+            : parseFloat(data.shippingCost) || 200
           
           setShippingSettings({
             freeShippingThreshold: threshold,
+            shippingCost: shippingCost,
           })
-          console.log('Shipping settings updated:', threshold) // Debug log
+          console.log('Shipping settings updated:', { threshold, shippingCost }) // Debug log
         }
       } catch (error) {
         console.error('Error fetching shipping settings:', error)
@@ -142,12 +146,12 @@ export default function CartPage() {
     return sum + (price * qty)
   }, 0)
   
-  // If threshold is 0, free shipping for all. Otherwise, free if above threshold, else ₹200
+  // If threshold is 0, free shipping for all. Otherwise, free if above threshold, else use shippingCost
   const shipping = shippingSettings.freeShippingThreshold === 0
     ? 0
     : subtotal >= shippingSettings.freeShippingThreshold
     ? 0
-    : BASE_SHIPPING_COST
+    : shippingSettings.shippingCost
   const total = subtotal + shipping
 
   if (cart.length === 0) {

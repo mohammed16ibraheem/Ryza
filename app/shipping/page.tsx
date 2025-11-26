@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react'
 export default function ShippingPage() {
   const [shippingSettings, setShippingSettings] = useState({
     freeShippingThreshold: 0, // Default to 0 (free shipping) instead of 5000
+    shippingCost: 200, // Default shipping cost
   })
   const [loading, setLoading] = useState(true)
-  const BASE_SHIPPING_COST = 200 // Fixed shipping cost for orders below threshold
 
   useEffect(() => {
     const fetchShippingSettings = async () => {
@@ -31,15 +31,19 @@ export default function ShippingPage() {
         const data = await response.json()
         console.log('Shipping settings fetched:', data) // Debug log
         
-        if (data.freeShippingThreshold !== undefined) {
+        if (data.freeShippingThreshold !== undefined || data.shippingCost !== undefined) {
           const threshold = typeof data.freeShippingThreshold === 'number' 
             ? data.freeShippingThreshold 
             : parseFloat(data.freeShippingThreshold) || 0
+          const shippingCost = typeof data.shippingCost === 'number'
+            ? data.shippingCost
+            : parseFloat(data.shippingCost) || 200
           
           setShippingSettings({
             freeShippingThreshold: threshold,
+            shippingCost: shippingCost,
           })
-          console.log('Shipping settings updated:', threshold) // Debug log
+          console.log('Shipping settings updated:', { threshold, shippingCost }) // Debug log
         }
       } catch (error) {
         console.error('Error fetching shipping settings:', error)
@@ -88,7 +92,7 @@ export default function ShippingPage() {
                 <p className="text-green-800 text-base md:text-lg leading-relaxed">
                   {shippingSettings.freeShippingThreshold === 0
                     ? 'Enjoy free shipping on all orders, regardless of order amount!'
-                    : `Enjoy free shipping on all orders above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}. For orders below this amount, a standard shipping fee of ₹${BASE_SHIPPING_COST} applies.`}
+                    : `Enjoy free shipping on all orders above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}. For orders below this amount, a standard shipping fee of ₹${shippingSettings.shippingCost.toLocaleString('en-IN')} applies.`}
                 </p>
               </div>
             </div>

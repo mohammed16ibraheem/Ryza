@@ -111,6 +111,7 @@ export default function AdminPanel() {
   // Shipping settings state
   const [shippingSettings, setShippingSettings] = useState({
     freeShippingThreshold: 5000,
+    shippingCost: 200,
   })
   const [savingShippingSettings, setSavingShippingSettings] = useState(false)
 
@@ -172,13 +173,17 @@ export default function AdminPanel() {
           cache: 'no-store', // Always fetch fresh data
         })
         const data = await response.json()
-        if (data.freeShippingThreshold !== undefined) {
+        if (data.freeShippingThreshold !== undefined || data.shippingCost !== undefined) {
           // IMPORTANT: Check for undefined/null, not falsy (0 is valid!)
           const threshold = data.freeShippingThreshold !== undefined && data.freeShippingThreshold !== null
             ? Number(data.freeShippingThreshold)
             : 5000
+          const shippingCost = data.shippingCost !== undefined && data.shippingCost !== null
+            ? Number(data.shippingCost)
+            : 200
           setShippingSettings({
             freeShippingThreshold: threshold,
+            shippingCost: shippingCost,
           })
         }
       } catch (error) {
@@ -697,9 +702,16 @@ export default function AdminPanel() {
 
       // Get the saved settings from the response
       const savedData = await response.json()
-      if (savedData.settings && savedData.settings.freeShippingThreshold !== undefined) {
+      if (savedData.settings && (savedData.settings.freeShippingThreshold !== undefined || savedData.settings.shippingCost !== undefined)) {
+        const threshold = savedData.settings.freeShippingThreshold !== undefined && savedData.settings.freeShippingThreshold !== null
+          ? Number(savedData.settings.freeShippingThreshold)
+          : shippingSettings.freeShippingThreshold
+        const shippingCost = savedData.settings.shippingCost !== undefined && savedData.settings.shippingCost !== null
+          ? Number(savedData.settings.shippingCost)
+          : shippingSettings.shippingCost
         setShippingSettings({
-          freeShippingThreshold: savedData.settings.freeShippingThreshold,
+          freeShippingThreshold: threshold,
+          shippingCost: shippingCost,
         })
       } else {
         // Fallback: Refresh shipping settings after a short delay to ensure blob is written
@@ -709,13 +721,17 @@ export default function AdminPanel() {
               cache: 'no-store',
             })
             const refreshData = await refreshResponse.json()
-            if (refreshData.freeShippingThreshold !== undefined) {
+            if (refreshData.freeShippingThreshold !== undefined || refreshData.shippingCost !== undefined) {
               // IMPORTANT: Check for undefined/null, not falsy (0 is valid!)
               const threshold = refreshData.freeShippingThreshold !== undefined && refreshData.freeShippingThreshold !== null
                 ? Number(refreshData.freeShippingThreshold)
                 : 5000
+              const shippingCost = refreshData.shippingCost !== undefined && refreshData.shippingCost !== null
+                ? Number(refreshData.shippingCost)
+                : 200
               setShippingSettings({
                 freeShippingThreshold: threshold,
+                shippingCost: shippingCost,
               })
             }
           } catch (err) {
@@ -1324,7 +1340,7 @@ export default function AdminPanel() {
               Shipping Settings
             </h2>
             <p className="text-gray-600 text-sm sm:text-base">
-              Set the free shipping threshold. Enter 0 for free shipping on all orders, or enter an amount above which orders get free shipping.
+              Set the free shipping threshold and shipping cost. Enter 0 for free shipping on all orders, or enter an amount above which orders get free shipping.
             </p>
           </div>
 
@@ -1349,7 +1365,31 @@ export default function AdminPanel() {
                 placeholder="5000"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Enter 0 for free shipping on all orders. Enter an amount (e.g., 5000) - orders above this amount get free shipping, orders below pay ₹200 shipping.
+                Enter 0 for free shipping on all orders. Enter an amount (e.g., 1000) - orders above this amount get free shipping, orders below pay the shipping cost.
+              </p>
+            </div>
+
+            {/* Shipping Cost */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Shipping Cost (₹)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={shippingSettings.shippingCost}
+                onChange={(e) =>
+                  setShippingSettings({
+                    ...shippingSettings,
+                    shippingCost: parseFloat(e.target.value) || 0,
+                  })
+                }
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all text-gray-900"
+                placeholder="200"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Enter the shipping cost for orders below the free shipping threshold (e.g., 200, 150, 250).
               </p>
             </div>
 
@@ -1367,9 +1407,9 @@ export default function AdminPanel() {
                 ) : (
                   <>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Order Amount: ₹3,000</span>
+                      <span className="text-gray-700">Order Amount: ₹{Math.max(1000, Math.floor(shippingSettings.freeShippingThreshold * 0.5)).toLocaleString('en-IN')}</span>
                       <span className="font-semibold text-gray-900">
-                        Shipping: {shippingSettings.freeShippingThreshold > 3000 ? '₹200' : 'Free'}
+                        Shipping: ₹{shippingSettings.shippingCost.toLocaleString('en-IN')}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -1382,7 +1422,7 @@ export default function AdminPanel() {
                   <p className="text-xs text-primary-800">
                     {shippingSettings.freeShippingThreshold === 0
                       ? '✅ Free shipping is enabled for all orders.'
-                      : `💡 Orders above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')} get free shipping. Orders below pay ₹200 shipping.`}
+                      : `💡 Orders above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')} get free shipping. Orders below pay ₹${shippingSettings.shippingCost.toLocaleString('en-IN')} shipping.`}
                   </p>
                 </div>
               </div>

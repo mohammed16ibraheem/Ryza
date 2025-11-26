@@ -39,6 +39,7 @@ export default function CheckoutPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [shippingSettings, setShippingSettings] = useState({
     freeShippingThreshold: 0,
+    shippingCost: 200,
   })
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const [formData, setFormData] = useState<ShippingInfo>({
@@ -55,7 +56,6 @@ export default function CheckoutPage() {
   const [showPaymentInfo, setShowPaymentInfo] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const router = useRouter()
-  const BASE_SHIPPING_COST = 200
 
   useEffect(() => {
     const loadCart = () => {
@@ -93,13 +93,17 @@ export default function CheckoutPage() {
         
         if (response.ok) {
           const data = await response.json()
-          if (data.freeShippingThreshold !== undefined) {
+          if (data.freeShippingThreshold !== undefined || data.shippingCost !== undefined) {
             const threshold = typeof data.freeShippingThreshold === 'number' 
               ? data.freeShippingThreshold 
               : parseFloat(data.freeShippingThreshold) || 0
+            const shippingCost = typeof data.shippingCost === 'number'
+              ? data.shippingCost
+              : parseFloat(data.shippingCost) || 200
             
             setShippingSettings({
               freeShippingThreshold: threshold,
+              shippingCost: shippingCost,
             })
           }
         }
@@ -358,14 +362,14 @@ export default function CheckoutPage() {
   
   // Calculate shipping cost:
   // - If admin sets freeShippingThreshold = 0: Free shipping for all (shipping = 0)
-  // - If admin sets freeShippingThreshold > 0 (e.g., 5000):
+  // - If admin sets freeShippingThreshold > 0 (e.g., 1000):
   //   - If subtotal >= threshold: Free shipping (shipping = 0)
-  //   - If subtotal < threshold: Add ₹200 shipping (shipping = 200)
+  //   - If subtotal < threshold: Add shipping cost (shipping = shippingCost)
   const shipping = shippingSettings.freeShippingThreshold === 0
     ? 0  // Free shipping for all orders
     : subtotal >= shippingSettings.freeShippingThreshold
     ? 0  // Free shipping (order amount above threshold)
-    : BASE_SHIPPING_COST  // Add ₹200 shipping (order below threshold)
+    : shippingSettings.shippingCost  // Add shipping cost (order below threshold)
   
   // Total amount = Product Price + Shipping (this is what goes to payment gateway)
   const total = subtotal + shipping

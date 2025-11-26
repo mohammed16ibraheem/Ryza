@@ -31,12 +31,14 @@ async function verifyAdmin(): Promise<boolean> {
 // Helper function to get shipping settings from Blob storage
 async function getShippingSettingsFromBlob(): Promise<{
   freeShippingThreshold: number
+  shippingCost: number
 }> {
   try {
     const token = process.env.BLOB_READ_WRITE_TOKEN
     if (!token) {
       return {
         freeShippingThreshold: 5000,
+        shippingCost: 200,
       }
     }
 
@@ -49,6 +51,7 @@ async function getShippingSettingsFromBlob(): Promise<{
     if (blobs.blobs.length === 0) {
       return {
         freeShippingThreshold: 5000,
+        shippingCost: 200,
       }
     }
 
@@ -65,6 +68,7 @@ async function getShippingSettingsFromBlob(): Promise<{
     if (!response.ok) {
       return {
         freeShippingThreshold: 5000,
+        shippingCost: 200,
       }
     }
 
@@ -72,6 +76,7 @@ async function getShippingSettingsFromBlob(): Promise<{
     if (!text || text.trim() === '') {
       return {
         freeShippingThreshold: 5000,
+        shippingCost: 200,
       }
     }
 
@@ -81,18 +86,24 @@ async function getShippingSettingsFromBlob(): Promise<{
     const threshold = data.freeShippingThreshold !== undefined && data.freeShippingThreshold !== null
       ? Number(data.freeShippingThreshold)
       : 5000
+    const shippingCost = data.shippingCost !== undefined && data.shippingCost !== null
+      ? Number(data.shippingCost)
+      : 200
     return {
       freeShippingThreshold: threshold,
+      shippingCost: shippingCost,
     }
   } catch (error: any) {
     if (error.status === 404 || error.code === 'ENOENT' || error.message?.includes('not found')) {
       return {
         freeShippingThreshold: 5000,
+        shippingCost: 200,
       }
     }
     console.error('Error reading shipping settings from Blob:', error)
     return {
       freeShippingThreshold: 5000,
+      shippingCost: 200,
     }
   }
 }
@@ -100,6 +111,7 @@ async function getShippingSettingsFromBlob(): Promise<{
 // Helper function to save shipping settings to Blob storage
 async function saveShippingSettingsToBlob(settings: {
   freeShippingThreshold: number
+  shippingCost: number
 }): Promise<void> {
   try {
     const token = process.env.BLOB_READ_WRITE_TOKEN
@@ -151,6 +163,7 @@ export async function GET() {
     return NextResponse.json(
       {
         freeShippingThreshold: 5000,
+        shippingCost: 200,
       },
       { 
         status: 200,
@@ -172,12 +185,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { freeShippingThreshold } = body
+    const { freeShippingThreshold, shippingCost } = body
 
     // Validate input
     if (
       typeof freeShippingThreshold !== 'number' ||
-      freeShippingThreshold < 0
+      freeShippingThreshold < 0 ||
+      typeof shippingCost !== 'number' ||
+      shippingCost < 0
     ) {
       return NextResponse.json(
         { error: 'Invalid shipping settings data' },
@@ -187,6 +202,7 @@ export async function POST(request: NextRequest) {
 
     const settings = {
       freeShippingThreshold: Math.round(freeShippingThreshold * 100) / 100,
+      shippingCost: Math.round(shippingCost * 100) / 100,
     }
 
     await saveShippingSettingsToBlob(settings)
