@@ -60,6 +60,19 @@
   animation: slide-in-right 0.3s ease-out;
 }
 
+/* Smooth scroll behavior */
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 640px) {
+  button, a, input {
+    -webkit-tap-highlight-color: rgba(146, 72, 122, 0.1);
+  }
+}
+
 @keyframes blob {
   0%, 100% {
     transform: translate(0, 0) scale(1);

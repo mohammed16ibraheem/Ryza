@@ -173,21 +173,29 @@ export default function Header() {
     }
   }, [isSearchOpen])
 
-  // Focus search input when opened and prevent body scroll on mobile
+  // Focus search input when opened and prevent body scroll on mobile with smooth transition
   useEffect(() => {
     if (isSearchOpen) {
-      if (searchInputRef.current) {
-        searchInputRef.current.focus()
-      }
+      // Small delay for smooth animation
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus()
+        }
+      }, 100)
       // Prevent body scroll on mobile when search is open
       document.body.style.overflow = 'hidden'
+      // Add smooth transition class
+      document.body.style.transition = 'overflow 0.3s ease'
     } else {
-      // Restore body scroll
-      document.body.style.overflow = ''
+      // Restore body scroll with smooth transition
+      setTimeout(() => {
+        document.body.style.overflow = ''
+      }, 300)
     }
     
     return () => {
       document.body.style.overflow = ''
+      document.body.style.transition = ''
     }
   }, [isSearchOpen])
 
@@ -224,10 +232,12 @@ export default function Header() {
 
   return (
     <Fragment>
-      {/* Search Backdrop - Only on Desktop */}
+      {/* Search Backdrop - Smooth Animation for Desktop and Mobile */}
       {isSearchOpen && (
         <div 
-          className="hidden sm:block fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+          className={`fixed inset-0 bg-black/20 sm:bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300 ${
+            isSearchOpen ? 'opacity-100' : 'opacity-0'
+          }`}
           onClick={() => {
             setIsSearchOpen(false)
             setSearchQuery('')
@@ -336,17 +346,22 @@ export default function Header() {
             <div className="relative">
               <button 
                 onClick={handleSearchClick}
-                className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-gray-700 hover:text-primary-600 transition-colors touch-manipulation"
+                className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 text-gray-700 hover:text-primary-600 active:scale-95 transition-all duration-200 touch-manipulation rounded-lg hover:bg-gray-100 active:bg-gray-200 ${
+                  isSearchOpen ? 'text-primary-600 bg-primary-50' : ''
+                }`}
                 aria-label="Search"
+                aria-expanded={isSearchOpen}
               >
-                <FiSearch className="w-5 h-5 sm:w-6 sm:h-6" />
+                <FiSearch className="w-5 h-5 sm:w-6 sm:h-6 transition-transform duration-200" />
               </button>
 
-              {/* Search Dropdown - Mobile Optimized */}
+              {/* Search Dropdown - Mobile Optimized with Smooth Animations */}
               {isSearchOpen && (
                 <div 
                   ref={searchDropdownRef}
-                  className="fixed sm:absolute top-0 sm:top-full left-0 sm:left-auto right-0 sm:right-0 mt-0 sm:mt-2 w-full sm:w-80 md:w-96 h-screen sm:h-auto sm:max-h-[calc(100vh-2rem)] bg-white sm:rounded-xl shadow-2xl border-0 sm:border border-gray-200 z-[60] overflow-hidden"
+                  className={`fixed sm:absolute top-0 sm:top-full left-0 sm:left-auto right-0 sm:right-0 mt-0 sm:mt-2 w-full sm:w-80 md:w-96 h-screen sm:h-auto sm:max-h-[calc(100vh-2rem)] bg-white sm:rounded-xl shadow-2xl border-0 sm:border border-gray-200 z-[60] overflow-hidden transition-all duration-300 ease-out ${
+                    isSearchOpen ? 'opacity-100 translate-y-0 sm:translate-y-0' : 'opacity-0 translate-y-4 sm:-translate-y-2'
+                  }`}
                 >
                   {/* Mobile Header with Close Button */}
                   <div className="flex items-center justify-between p-4 border-b border-gray-200 sm:hidden">
@@ -363,10 +378,10 @@ export default function Header() {
                     </button>
                   </div>
 
-                  {/* Search Input - Enhanced Design */}
-                  <div className="p-3 sm:p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                  {/* Search Input - Enhanced Design with Smooth Animations */}
+                  <div className="p-3 sm:p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 via-white to-gray-50">
                     <div className="relative">
-                      <FiSearch className="absolute left-4 sm:left-4 top-1/2 transform -translate-y-1/2 text-primary-600 w-5 h-5 sm:w-5 sm:h-5 z-10" />
+                      <FiSearch className="absolute left-4 sm:left-4 top-1/2 transform -translate-y-1/2 text-primary-600 w-5 h-5 sm:w-5 sm:h-5 z-10 transition-colors duration-200" />
                       <input
                         ref={searchInputRef}
                         type="text"
@@ -378,10 +393,15 @@ export default function Header() {
                             setSearchQuery('')
                           } else if (e.key === 'Enter' && searchResults.length > 0) {
                             handleProductClick(searchResults[0])
+                          } else if (e.key === 'ArrowDown' && searchResults.length > 0) {
+                            e.preventDefault()
+                            // Focus first result
+                            const firstResult = document.querySelector('[data-search-result="0"]') as HTMLElement
+                            firstResult?.focus()
                           }
                         }}
                         placeholder="Search products... (e.g., dress, hijab, gift)"
-                        className="w-full pl-12 pr-12 py-3.5 sm:py-3.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base sm:text-sm touch-manipulation shadow-sm hover:border-primary-400 transition-all duration-200 bg-white"
+                        className="w-full pl-12 pr-12 sm:pr-20 py-3.5 sm:py-3.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-base sm:text-sm touch-manipulation shadow-sm hover:border-primary-400 transition-all duration-200 bg-white placeholder:text-gray-400"
                         autoComplete="off"
                       />
                       {searchQuery && (
@@ -390,32 +410,36 @@ export default function Header() {
                             setSearchQuery('')
                             searchInputRef.current?.focus()
                           }}
-                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-all touch-manipulation"
+                          className="absolute right-4 sm:right-16 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 touch-manipulation min-h-[36px] min-w-[36px] flex items-center justify-center"
                           aria-label="Clear search"
                         >
                           <FiClose className="w-5 h-5 sm:w-4 sm:h-4" />
                         </button>
                       )}
                       {searchQuery && searchResults.length > 0 && (
-                        <div className="absolute right-12 top-1/2 transform -translate-y-1/2 text-xs text-gray-400 font-medium">
+                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 font-semibold hidden sm:block bg-primary-50 px-2 py-1 rounded-md">
                           {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'}
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Search Results - Mobile Optimized */}
-                  <div className="max-h-[calc(100vh-180px)] sm:max-h-96 overflow-y-auto overscroll-contain">
+                  {/* Search Results - Mobile Optimized with Smooth Scrolling */}
+                  <div className="max-h-[calc(100vh-180px)] sm:max-h-96 overflow-y-auto overscroll-contain scroll-smooth">
                     {isLoading ? (
-                      <div className="p-8 sm:p-8 text-center text-gray-500">
-                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent mx-auto mb-2"></div>
-                        <p className="text-sm sm:text-sm">Searching...</p>
+                      <div className="p-8 sm:p-8 text-center text-gray-500 animate-fade-in">
+                        <div className="animate-spin rounded-full h-10 w-10 sm:h-8 sm:w-8 border-3 border-primary-600 border-t-transparent mx-auto mb-3 sm:mb-2"></div>
+                        <p className="text-sm sm:text-sm font-medium text-gray-700">Searching...</p>
+                        <p className="text-xs text-gray-400 mt-1">Finding products matching "{searchQuery}"</p>
                       </div>
                     ) : searchQuery.trim() && searchResults.length === 0 ? (
-                      <div className="p-8 sm:p-8 text-center text-gray-500">
-                        <FiSearch className="w-12 h-12 sm:w-8 sm:h-8 mx-auto mb-3 sm:mb-2 text-gray-300" />
-                        <p className="text-base sm:text-sm font-medium">No products found</p>
+                      <div className="p-8 sm:p-8 text-center text-gray-500 animate-fade-in">
+                        <div className="w-16 h-16 sm:w-12 sm:h-12 mx-auto mb-4 sm:mb-3 bg-gray-100 rounded-full flex items-center justify-center">
+                          <FiSearch className="w-8 h-8 sm:w-6 sm:h-6 text-gray-400" />
+                        </div>
+                        <p className="text-base sm:text-sm font-semibold text-gray-700">No products found</p>
                         <p className="text-sm sm:text-xs mt-2 sm:mt-1 text-gray-400">Try a different search term</p>
+                        <p className="text-xs mt-3 text-primary-600">Suggestions: Check spelling or try broader terms</p>
                       </div>
                     ) : !searchQuery.trim() ? (
                       <div className="p-8 sm:p-8 text-center text-gray-500">
@@ -428,26 +452,49 @@ export default function Header() {
                       </div>
                     ) : (
                       <div className="py-1 sm:py-2">
-                        {/* Results Header */}
-                        <div className="px-4 sm:px-4 py-2 sm:py-2 bg-gray-50 border-b border-gray-200">
+                        {/* Results Header - Smooth Appearance */}
+                        <div className="px-4 sm:px-4 py-2.5 sm:py-2 bg-gradient-to-r from-gray-50 to-primary-50 border-b border-gray-200 animate-fade-in">
                           <p className="text-xs sm:text-sm font-semibold text-gray-700">
-                            {searchResults.length} {searchResults.length === 1 ? 'product found' : 'products found'} for "{searchQuery}"
+                            <span className="text-primary-600 font-bold">{searchResults.length}</span> {searchResults.length === 1 ? 'product found' : 'products found'} for <span className="text-primary-600">"{searchQuery}"</span>
                           </p>
                         </div>
-                        {searchResults.map((product) => (
+                        {searchResults.map((product, index) => (
                           <button
                             key={product.id}
+                            data-search-result={index}
                             onClick={() => handleProductClick(product)}
-                            className="w-full px-4 sm:px-4 py-4 sm:py-3 active:bg-gray-100 sm:hover:bg-gray-50 transition-colors text-left border-b border-gray-100 last:border-b-0 group touch-manipulation"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                handleProductClick(product)
+                              } else if (e.key === 'ArrowDown') {
+                                e.preventDefault()
+                                const nextResult = document.querySelector(`[data-search-result="${index + 1}"]`) as HTMLElement
+                                nextResult?.focus()
+                              } else if (e.key === 'ArrowUp') {
+                                e.preventDefault()
+                                if (index === 0) {
+                                  searchInputRef.current?.focus()
+                                } else {
+                                  const prevResult = document.querySelector(`[data-search-result="${index - 1}"]`) as HTMLElement
+                                  prevResult?.focus()
+                                }
+                              }
+                            }}
+                            className="w-full px-4 sm:px-4 py-4 sm:py-3 active:bg-gray-100 sm:hover:bg-gray-50 focus:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-inset transition-all duration-150 text-left border-b border-gray-100 last:border-b-0 group touch-manipulation"
                           >
                             <div className="flex items-start gap-3 sm:gap-3">
-                              {/* Product Image - Larger on Mobile */}
+                              {/* Product Image - Larger on Mobile with Smooth Loading */}
                               {product.images && product.images.length > 0 && (
-                                <div className="flex-shrink-0 w-16 h-16 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-gray-100 shadow-sm">
+                                <div className="flex-shrink-0 w-16 h-16 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-gray-100 shadow-sm ring-1 ring-gray-200 group-hover:ring-primary-300 transition-all duration-200">
                                   <img
                                     src={product.images[0]}
                                     alt={product.name || product.title}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = '/placeholder.jpg'
+                                    }}
                                   />
                                 </div>
                               )}
@@ -483,28 +530,28 @@ export default function Header() {
                                 </p>
                               </div>
                               
-                              {/* Arrow Icon - Larger on Mobile */}
-                              <div className="flex-shrink-0 text-gray-400 group-active:text-primary-600 sm:group-hover:text-primary-600 transition-colors flex items-center">
-                                <svg className="w-6 h-6 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              {/* Arrow Icon - Larger on Mobile with Smooth Animation */}
+                              <div className="flex-shrink-0 text-gray-400 group-active:text-primary-600 sm:group-hover:text-primary-600 group-focus:text-primary-600 transition-all duration-200 flex items-center">
+                                <svg className="w-6 h-6 sm:w-5 sm:h-5 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                 </svg>
                               </div>
                             </div>
                           </button>
                         ))}
-                        {/* View All Results Link - Show if many results */}
+                        {/* View All Results Link - Show if many results with Smooth Animation */}
                         {searchResults.length >= 12 && (
-                          <div className="px-4 sm:px-4 py-3 sm:py-3 border-t border-gray-200 bg-gray-50">
+                          <div className="px-4 sm:px-4 py-3 sm:py-3 border-t-2 border-primary-200 bg-gradient-to-r from-primary-50 to-white animate-fade-in">
                             <Link
                               href={`/products?search=${encodeURIComponent(searchQuery)}`}
                               onClick={() => {
                                 setIsSearchOpen(false)
                                 setSearchQuery('')
                               }}
-                              className="flex items-center justify-center gap-2 text-primary-600 hover:text-primary-700 font-semibold text-sm sm:text-base transition-colors touch-manipulation"
+                              className="flex items-center justify-center gap-2 text-primary-600 hover:text-primary-700 active:text-primary-800 font-semibold text-sm sm:text-base transition-all duration-200 touch-manipulation group rounded-lg py-2 hover:bg-primary-100 active:bg-primary-200"
                             >
                               <span>View all results for "{searchQuery}"</span>
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                               </svg>
                             </Link>
