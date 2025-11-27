@@ -2,8 +2,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FiUploadCloud, FiPlay, FiCheckCircle, FiTrash2, FiEdit2, FiFolder } from 'react-icons/fi'
-import { compressImage, compressImages, compressVideo } from '@/lib/compression'
+import { FiUploadCloud, FiCheckCircle, FiTrash2, FiEdit2, FiFolder } from 'react-icons/fi'
+import { compressImage, compressImages } from '@/lib/compression'
 
 const PRODUCT_CATEGORIES = [
   'Salah Essential',
@@ -32,7 +32,6 @@ type DraftProduct = {
   imageColors?: string[] // Color names for each image (e.g., ["brown lightbround morelightbroud", "green lightgreen morelightgreen", "black blue lightbule"])
   outOfStockImages?: number[] // Array of image indices (0, 1, 2) that are out of stock
   colorVariants?: ColorVariant[]
-  video?: string
   folderPath?: string
 }
 
@@ -90,13 +89,14 @@ export default function AdminPanel() {
   const [existingImages, setExistingImages] = useState<string[]>([])
   const [imageColors, setImageColors] = useState<string[]>(['', '', '']) // Color names for each image (1, 2, 3)
   const [outOfStockImages, setOutOfStockImages] = useState<number[]>([]) // Track which images are out of stock (0, 1, 2)
-  const [videoFile, setVideoFile] = useState<File | null>(null)
-  const [videoPreview, setVideoPreview] = useState<string | undefined>()
   const [products, setProducts] = useState<DraftProduct[]>([])
   const [editingProductId, setEditingProductId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<string>('')
   const [loadingProducts, setLoadingProducts] = useState(true)
+  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('success')
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   
@@ -217,7 +217,6 @@ export default function AdminPanel() {
           imageColors: p.imageColors || [],
           outOfStockImages: p.outOfStockImages || [],
           colorVariants: p.colorVariants,
-          video: p.video,
           folderPath: p.folderPath,
         }))
         
@@ -260,33 +259,117 @@ export default function AdminPanel() {
     return null
   }
 
+  // Handle bulk image upload (replaces all)
   const handleImagesChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files ? Array.from(event.target.files) : []
-    const limitedFiles = files.slice(0, MAX_IMAGES)
+    const availableSlots = MAX_IMAGES - (imagePreviews.length + existingImages.length)
+    const limitedFiles = files.slice(0, availableSlots > 0 ? availableSlots : 0)
+    
+    if (limitedFiles.length === 0) {
+      showToastNotification('Maximum 4 images allowed. Remove some images first.', 'error')
+      return
+    }
     
     // Compress images before setting them
     setUploadStatus('Compressing images...')
     try {
       const compressedFiles = await compressImages(limitedFiles)
-      setImageFiles(compressedFiles)
-      const previews = compressedFiles.map((file) => URL.createObjectURL(file))
-      setImagePreviews(previews)
-      setExistingImages([])
-      // Reset out of stock selection and colors when new images are uploaded
-      setOutOfStockImages([])
-      setImageColors(['', '', ''])
+      setImageFiles([...imageFiles, ...compressedFiles])
+      const newPreviews = compressedFiles.map((file) => URL.createObjectURL(file))
+      setImagePreviews([...imagePreviews, ...newPreviews])
+      // Extend imageColors array if needed
+      const currentColors = [...imageColors]
+      while (currentColors.length < imagePreviews.length + newPreviews.length) {
+        currentColors.push('')
+      }
+      setImageColors(currentColors.slice(0, MAX_IMAGES))
       setUploadStatus('')
     } catch (error) {
       console.error('Error compressing images:', error)
       // Fallback to original files if compression fails
-      setImageFiles(limitedFiles)
-      const previews = limitedFiles.map((file) => URL.createObjectURL(file))
-      setImagePreviews(previews)
-      setExistingImages([])
-      setOutOfStockImages([])
-      setImageColors(['', '', ''])
+      setImageFiles([...imageFiles, ...limitedFiles])
+      const newPreviews = limitedFiles.map((file) => URL.createObjectURL(file))
+      setImagePreviews([...imagePreviews, ...newPreviews])
+      const currentColors = [...imageColors]
+      while (currentColors.length < imagePreviews.length + newPreviews.length) {
+        currentColors.push('')
+      }
+      setImageColors(currentColors.slice(0, MAX_IMAGES))
       setUploadStatus('')
     }
+    // Reset input
+    event.target.value = ''
+  }
+
+  // Handle single image addition
+  const handleAddSingleImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    
+    const totalImages = imagePreviews.length + existingImages.length
+    if (totalImages >= MAX_IMAGES) {
+      showToastNotification('Maximum 4 images allowed. Remove some images first.', 'error')
+      event.target.value = ''
+      return
+    }
+    
+    if (!file.type.startsWith('image/')) {
+      showToastNotification('Please select a valid image file', 'error')
+      event.target.value = ''
+      return
+    }
+    
+    setUploadStatus('Compressing image...')
+    try {
+      const compressedFile = await compressImage(file)
+      setImageFiles([...imageFiles, compressedFile])
+      const newPreview = URL.createObjectURL(compressedFile)
+      setImagePreviews([...imagePreviews, newPreview])
+      // Extend imageColors array if needed
+      const currentColors = [...imageColors]
+      currentColors.push('')
+      setImageColors(currentColors.slice(0, MAX_IMAGES))
+      setUploadStatus('')
+    } catch (error) {
+      console.error('Error compressing image:', error)
+      setImageFiles([...imageFiles, file])
+      const newPreview = URL.createObjectURL(file)
+      setImagePreviews([...imagePreviews, newPreview])
+      const currentColors = [...imageColors]
+      currentColors.push('')
+      setImageColors(currentColors.slice(0, MAX_IMAGES))
+      setUploadStatus('')
+    }
+    event.target.value = ''
+  }
+
+  // Remove an image (from previews)
+  const handleRemoveImage = (index: number) => {
+    // Revoke object URL to prevent memory leak
+    if (imagePreviews[index]) {
+      URL.revokeObjectURL(imagePreviews[index])
+    }
+    
+    const newPreviews = imagePreviews.filter((_, i) => i !== index)
+    const newFiles = imageFiles.filter((_, i) => i !== index)
+    const newColors = imageColors.filter((_, i) => i !== index)
+    const newOutOfStock = outOfStockImages.filter(i => i !== index).map(i => i > index ? i - 1 : i)
+    
+    setImagePreviews(newPreviews)
+    setImageFiles(newFiles)
+    setImageColors(newColors)
+    setOutOfStockImages(newOutOfStock)
+  }
+
+  // Remove an existing image (from server)
+  const handleRemoveExistingImage = (index: number) => {
+    const newExisting = existingImages.filter((_, i) => i !== index)
+    const newColors = imageColors.filter((_, i) => i !== index)
+    const newOutOfStock = outOfStockImages.filter(i => i !== index).map(i => i > index ? i - 1 : i)
+    
+    setExistingImages(newExisting)
+    setImageColors(newColors)
+    setOutOfStockImages(newOutOfStock)
   }
 
   const handleImageColorChange = (index: number, value: string) => {
@@ -303,39 +386,10 @@ export default function AdminPanel() {
     )
   }
 
-  const handleVideoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      // Validate video file type
-      if (!file.type.startsWith('video/')) {
-        setUploadStatus('❌ Please select a valid video file')
-        setTimeout(() => setUploadStatus(''), 3000)
-        return
-      }
-      
-      // Compress and trim video before setting it
-      setUploadStatus('Processing video (trimming to 1 minute and compressing)...')
-      try {
-        const compressedVideo = await compressVideo(file)
-        setVideoFile(compressedVideo)
-        setVideoPreview(URL.createObjectURL(compressedVideo))
-        setUploadStatus('✅ Video processed successfully (max 1 minute, compressed)')
-        setTimeout(() => setUploadStatus(''), 3000)
-      } catch (error) {
-        console.error('Error compressing video:', error)
-        // Fallback to original file if compression fails
-        setVideoFile(file)
-        setVideoPreview(URL.createObjectURL(file))
-        setUploadStatus('⚠️ Video compression failed, using original file')
-        setTimeout(() => setUploadStatus(''), 3000)
-      }
-    } else {
-      setVideoFile(null)
-      setVideoPreview(undefined)
-    }
-  }
-
   const resetForm = () => {
+    // Revoke all object URLs to prevent memory leaks
+    imagePreviews.forEach(url => URL.revokeObjectURL(url))
+    
     setTitle('')
     setDescription('')
     setPrice('')
@@ -348,8 +402,6 @@ export default function AdminPanel() {
     setExistingImages([])
     setImageColors(['', '', ''])
     setOutOfStockImages([])
-    setVideoFile(null)
-    setVideoPreview(undefined)
     setEditingProductId(null)
     setUploadStatus('')
     setColorVariants([])
@@ -407,17 +459,14 @@ export default function AdminPanel() {
         images: p.images || [],
         outOfStockImages: p.outOfStockImages || [],
         colorVariants: p.colorVariants,
-        video: p.video,
         folderPath: p.folderPath,
       }))
       setProducts(transformedProducts)
       
-      setUploadStatus('✅ Product deleted successfully!')
-      setTimeout(() => setUploadStatus(''), 3000)
+      showToastNotification('Product deleted successfully!', 'success')
     } catch (error) {
       console.error('Error deleting product:', error)
-      setUploadStatus(`❌ Error: ${error instanceof Error ? error.message : 'Failed to delete product'}`)
-      setTimeout(() => setUploadStatus(''), 5000)
+      showToastNotification(`Error: ${error instanceof Error ? error.message : 'Failed to delete product'}`, 'error')
     }
   }
 
@@ -454,12 +503,12 @@ export default function AdminPanel() {
     event.preventDefault()
     const hasExistingImages = !!editingProductId && existingImages.length > 0
     if (!title || !price || !description || (!imageFiles.length && !hasExistingImages)) {
-      setUploadStatus('Please fill all required fields and ensure at least one product image is available')
+      showToastNotification('Please fill all required fields and ensure at least one product image is available', 'error')
       return
     }
 
     if (category === 'Hijabs' && !subCategory) {
-      setUploadStatus('Please select Hijab type (Hijab, Hijab Essentials, Luxury Hijabs, or Day to Day Life)')
+      showToastNotification('Please select Hijab type (Hijab, Hijab Essentials, Luxury Hijabs, or Day to Day Life)', 'error')
       return
     }
 
@@ -472,8 +521,13 @@ export default function AdminPanel() {
 
       let uploadedImages: string[] = []
 
+      // Start with existing images (when editing)
+      if (hasExistingImages) {
+        uploadedImages = [...existingImages]
+      }
+
+      // Upload newly selected images and add to the array
       if (imageFiles.length > 0) {
-        // Upload newly selected images
         const imageFormData = new FormData()
         imageFiles.forEach((file) => {
           imageFormData.append('files', file)
@@ -495,9 +549,8 @@ export default function AdminPanel() {
         }
 
         const imageData = await imageResponse.json()
-        uploadedImages = imageData.files
-      } else if (hasExistingImages) {
-        uploadedImages = existingImages
+        // Combine existing images with newly uploaded ones
+        uploadedImages = [...uploadedImages, ...imageData.files]
       }
 
       // Upload color variant images
@@ -538,31 +591,6 @@ export default function AdminPanel() {
         }
       }
 
-      // Upload video if exists
-      let uploadedVideo: string | undefined = undefined
-      if (videoFile) {
-        const videoFormData = new FormData()
-        videoFormData.append('video', videoFile)
-        videoFormData.append('category', category)
-        if (subCategory) {
-          videoFormData.append('subCategory', subCategory)
-        }
-        videoFormData.append('productId', productId)
-
-        const videoResponse = await fetch('/api/upload-video', {
-          method: 'POST',
-          body: videoFormData,
-        })
-
-        if (videoResponse.ok) {
-          const videoData = await videoResponse.json()
-          uploadedVideo = videoData.video
-        } else {
-          const errorData = await videoResponse.json().catch(() => ({}))
-          console.warn('Video upload failed:', errorData.message || errorData.error)
-        }
-      }
-
       // Prepare product data for API
       const productData = {
         id: productId,
@@ -575,10 +603,11 @@ export default function AdminPanel() {
         category,
         subCategory: category === 'Hijabs' ? subCategory : undefined,
         images: uploadedImages,
-        imageColors: imageColors.filter(c => c.trim() !== '').length > 0 ? imageColors : undefined,
+        imageColors: imageColors.slice(0, uploadedImages.length).filter(c => c.trim() !== '').length > 0 
+          ? imageColors.slice(0, uploadedImages.length) 
+          : undefined,
         outOfStockImages: outOfStockImages.length > 0 ? outOfStockImages : undefined,
         colorVariants: colorVariantsData.length > 0 ? colorVariantsData : undefined,
-        video: uploadedVideo,
         folderPath,
       }
 
@@ -609,17 +638,16 @@ export default function AdminPanel() {
         subCategory: p.subCategory,
         images: p.images || [],
         colorVariants: p.colorVariants,
-        video: p.video,
         folderPath: p.folderPath,
       }))
       setProducts(transformedProducts)
       
       setUploading(false)
-      setUploadStatus(editingProductId ? '✅ Product Updated Successfully!' : '✅ Upload Successful!')
+      setUploadStatus('') // Clear loading status
+      showToastNotification(editingProductId ? 'Product updated successfully!' : 'Product uploaded successfully!', 'success')
 
       // Clean up preview URLs
       imagePreviews.forEach((url) => URL.revokeObjectURL(url))
-      if (videoPreview) URL.revokeObjectURL(videoPreview)
 
       // Clear editing state
       setEditingProductId(null)
@@ -634,13 +662,11 @@ export default function AdminPanel() {
       // Scroll to top to show success message
       window.scrollTo({ top: 0, behavior: 'smooth' })
 
-      // Keep success message visible for 8 seconds
-      setTimeout(() => setUploadStatus(''), 8000)
+      // Status cleared, toast notification shows success
     } catch (error) {
       console.error('Upload error:', error)
       setUploading(false)
-      setUploadStatus(`❌ Error: ${error instanceof Error ? error.message : 'Failed to upload files'}`)
-      setTimeout(() => setUploadStatus(''), 5000)
+      showToastNotification(`Error: ${error instanceof Error ? error.message : 'Failed to upload files'}`, 'error')
     }
   }
 
@@ -672,12 +698,10 @@ export default function AdminPanel() {
         ...prev,
         [categoryKey]: data.thumbnail
       }))
-      setUploadStatus(`✅ Thumbnail uploaded successfully for ${categoryKey}`)
-      setTimeout(() => setUploadStatus(''), 3000)
+      showToastNotification(`Thumbnail uploaded successfully for ${categoryKey.replace(/-/g, ' ')}`, 'success')
     } catch (error) {
       console.error('Error uploading thumbnail:', error)
-      setUploadStatus(`❌ Error: ${error instanceof Error ? error.message : 'Failed to upload thumbnail'}`)
-      setTimeout(() => setUploadStatus(''), 5000)
+      showToastNotification(`Error: ${error instanceof Error ? error.message : 'Failed to upload thumbnail'}`, 'error')
     } finally {
       setUploadingThumbnail(null)
     }
@@ -713,6 +737,7 @@ export default function AdminPanel() {
           freeShippingThreshold: threshold,
           shippingCost: shippingCost,
         })
+        showToastNotification('Shipping settings saved successfully!', 'success')
       } else {
         // Fallback: Refresh shipping settings after a short delay to ensure blob is written
         setTimeout(async () => {
@@ -740,12 +765,10 @@ export default function AdminPanel() {
         }, 500)
       }
 
-      setUploadStatus('✅ Shipping settings saved successfully!')
-      setTimeout(() => setUploadStatus(''), 3000)
+      showToastNotification('Shipping settings saved successfully!', 'success')
     } catch (error) {
       console.error('Error saving shipping settings:', error)
-      setUploadStatus(`❌ Error: ${error instanceof Error ? error.message : 'Failed to save shipping settings'}`)
-      setTimeout(() => setUploadStatus(''), 5000)
+      showToastNotification(`Error: ${error instanceof Error ? error.message : 'Failed to save shipping settings'}`, 'error')
     } finally {
       setSavingShippingSettings(false)
     }
@@ -760,8 +783,67 @@ export default function AdminPanel() {
     { key: 'offers', label: '6. Offers', description: 'Limited-time deals & bundles' },
   ]
 
+  // Toast notification function
+  const showToastNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToastMessage(message)
+    setToastType(type)
+    setShowToast(true)
+    setTimeout(() => {
+      setShowToast(false)
+    }, 4000) // Auto-hide after 4 seconds
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-4 sm:py-8 md:py-12 lg:py-16">
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div className={`rounded-xl shadow-2xl border-2 p-4 sm:p-5 min-w-[280px] sm:min-w-[350px] max-w-[90vw] backdrop-blur-sm ${
+            toastType === 'success'
+              ? 'bg-green-50/95 border-green-300 text-green-800'
+              : toastType === 'error'
+              ? 'bg-red-50/95 border-red-300 text-red-800'
+              : 'bg-blue-50/95 border-blue-300 text-blue-800'
+          }`}>
+            <div className="flex items-start gap-3 sm:gap-4">
+              {toastType === 'success' && (
+                <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-green-500 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+              {toastType === 'error' && (
+                <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-red-500 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              )}
+              {toastType === 'info' && (
+                <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm sm:text-base md:text-lg break-words">{toastMessage}</p>
+              </div>
+              <button
+                onClick={() => setShowToast(false)}
+                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 space-y-6 sm:space-y-8 md:space-y-10">
         {/* Header with Logout */}
         <div className="flex justify-end mb-2 sm:mb-4">
@@ -787,40 +869,17 @@ export default function AdminPanel() {
                 {editingProductId ? 'Edit Product' : 'Create a new product card'}
               </h1>
               <p className="text-gray-500 mt-2 text-sm sm:text-base">
-                Upload up to 4 images (1 thumbnail + 3 product images) and 1 video with pricing & descriptions. Choose the collection where it should appear.
+                Upload up to 4 images (1 thumbnail + 3 product images) with pricing & descriptions. Choose the collection where it should appear.
               </p>
-            </div>
-            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 flex-shrink-0">
-              <FiCheckCircle className="text-primary-600 flex-shrink-0" />
-              <span className="hidden sm:inline">Files are uploaded to GitHub repository and organized by category.</span>
-              <span className="sm:hidden">GitHub storage</span>
             </div>
           </div>
 
-          {uploadStatus && (
-            <div className={`mb-4 sm:mb-6 p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg animate-fade-in ${
-              uploadStatus.includes('✅') 
-                ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 border-2 border-green-300' 
-                : uploadStatus.includes('❌')
-                ? 'bg-red-50 text-red-700 border-2 border-red-200'
-                : 'bg-blue-50 text-blue-700 border-2 border-blue-200'
-            }`}>
-              <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-                {uploadStatus.includes('✅') && (
-                  <div className="flex-shrink-0 w-10 h-10 sm:w-14 sm:h-14 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
-                    <svg className="w-6 h-6 sm:w-9 sm:h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-base sm:text-lg md:text-xl mb-1 sm:mb-2 break-words">{uploadStatus}</p>
-                  {uploadStatus.includes('✅') && (
-                    <p className="text-sm sm:text-base text-green-700 font-medium">
-                      Your product has been {editingProductId ? 'updated' : 'uploaded'} successfully! You can view it in the "All Products" section below.
-                    </p>
-                  )}
-                </div>
+          {/* Loading status for processing (compressing, uploading, etc.) */}
+          {uploadStatus && !uploadStatus.includes('✅') && !uploadStatus.includes('❌') && (
+            <div className="mb-4 sm:mb-6 p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg bg-blue-50 text-blue-700 border-2 border-blue-200">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-3 border-blue-600 border-t-transparent"></div>
+                <p className="font-semibold text-sm sm:text-base">{uploadStatus}</p>
               </div>
             </div>
           )}
@@ -980,24 +1039,48 @@ export default function AdminPanel() {
               ) : (
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Upload Product Images</label>
-                  <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImagesChange}
-                      className="hidden"
-                      id="product-images"
-                    />
-                    <label htmlFor="product-images" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[120px] sm:min-h-[140px] justify-center">
-                      <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
-                      <div>
-                        <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload up to 4 images</p>
-                        <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG (1st image = Thumbnail)</p>
-                      </div>
-                    </label>
-                    <p className="text-xs text-gray-400 mt-2">Selected: {imagePreviews.length} / {MAX_IMAGES}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Bulk Upload */}
+                    <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImagesChange}
+                        className="hidden"
+                        id="product-images-bulk"
+                        disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES}
+                      />
+                      <label htmlFor="product-images-bulk" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
+                        <div>
+                          <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload Multiple</p>
+                          <p className="text-xs text-gray-400 mt-1">Select multiple at once</p>
+                        </div>
+                      </label>
+                    </div>
+                    {/* Single Upload */}
+                    <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAddSingleImage}
+                        className="hidden"
+                        id="product-images-single"
+                        disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES}
+                      />
+                      <label htmlFor="product-images-single" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
+                        <div>
+                          <p className="font-semibold text-gray-700 text-sm sm:text-base">Add One Image</p>
+                          <p className="text-xs text-gray-400 mt-1">Add images one by one</p>
+                        </div>
+                      </label>
+                    </div>
                   </div>
+                  <p className="text-xs text-gray-400 text-center">
+                    Images: {imagePreviews.length + existingImages.length} / {MAX_IMAGES} (1st image = Thumbnail)
+                  </p>
                 </div>
               )}
             </div>
@@ -1005,41 +1088,182 @@ export default function AdminPanel() {
             {category === 'Hijabs' && (
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">Upload Product Images</label>
-                <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleImagesChange}
-                    className="hidden"
-                    id="product-images-hijabs"
-                  />
-                  <label htmlFor="product-images-hijabs" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[120px] sm:min-h-[140px] justify-center">
-                    <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
-                    <div>
-                      <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload up to 4 images</p>
-                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG (1st image = Thumbnail)</p>
-                    </div>
-                  </label>
-                  <p className="text-xs text-gray-400 mt-2">Selected: {imagePreviews.length} / {MAX_IMAGES}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Bulk Upload */}
+                  <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImagesChange}
+                      className="hidden"
+                      id="product-images-hijabs-bulk"
+                      disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES}
+                    />
+                    <label htmlFor="product-images-hijabs-bulk" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
+                      <div>
+                        <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload Multiple</p>
+                        <p className="text-xs text-gray-400 mt-1">Select multiple at once</p>
+                      </div>
+                    </label>
+                  </div>
+                  {/* Single Upload */}
+                  <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAddSingleImage}
+                      className="hidden"
+                      id="product-images-hijabs-single"
+                      disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES}
+                    />
+                    <label htmlFor="product-images-hijabs-single" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
+                      <div>
+                        <p className="font-semibold text-gray-700 text-sm sm:text-base">Add One Image</p>
+                        <p className="text-xs text-gray-400 mt-1">Add images one by one</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 text-center">
+                  Images: {imagePreviews.length + existingImages.length} / {MAX_IMAGES} (1st image = Thumbnail)
+                </p>
+              </div>
+            )}
+
+            {/* Show existing images when editing */}
+            {existingImages.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-2 sm:mb-3">Existing Images</p>
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {existingImages.map((src, index) => {
+                    const displayIndex = index
+                    return (
+                      <div key={`existing-${index}`} className="space-y-2">
+                        <div className="relative rounded-2xl overflow-hidden border-2 shadow-lg transition-all hover:shadow-xl" style={{
+                          borderColor: displayIndex === 0 ? '#92487A' : '#e5e7eb',
+                          borderWidth: displayIndex === 0 ? '3px' : '2px'
+                        }}>
+                          <img src={src} alt={`Existing ${displayIndex + 1}`} className="w-full h-40 object-cover" />
+                          
+                          {/* Remove Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExistingImage(index)}
+                            className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-lg z-20"
+                            title="Remove image"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                          
+                          {/* Thumbnail Badge */}
+                          {displayIndex === 0 && (
+                            <div className="absolute top-3 left-3 z-10">
+                              <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-xl flex items-center gap-2 border-2 border-white/30 backdrop-blur-sm">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span>THUMBNAIL</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Mark Out of Stock */}
+                          <div className="absolute bottom-3 right-3 z-10">
+                            <label className={`group flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg cursor-pointer transition-all duration-200 ${
+                              outOfStockImages.includes(displayIndex) 
+                                ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                : 'bg-white/95 backdrop-blur-sm hover:bg-white text-gray-700 border-2 border-gray-200 hover:border-red-300'
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={outOfStockImages.includes(displayIndex)}
+                                onChange={() => toggleOutOfStock(displayIndex)}
+                                className="sr-only"
+                              />
+                              {outOfStockImages.includes(displayIndex) ? (
+                                <>
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  <span className="text-xs font-bold">Out of Stock</span>
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                  <span className="text-xs font-semibold">Mark Out of Stock</span>
+                                </>
+                              )}
+                            </label>
+                          </div>
+                          
+                          {/* Out of Stock Overlay */}
+                          {outOfStockImages.includes(displayIndex) && (
+                            <div className="absolute inset-0 bg-gradient-to-br from-red-500/30 via-red-600/20 to-red-700/30 flex items-center justify-center pointer-events-none backdrop-blur-[1px]">
+                              <div className="bg-red-600 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-2xl border-4 border-white/50 transform rotate-[-2deg]">
+                                <div className="flex items-center gap-2">
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                  </svg>
+                                  <span>OUT OF STOCK</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-gray-700">
+                            {displayIndex === 0 ? 'Thumbnail' : `Image ${displayIndex + 1}`} Color Name
+                          </label>
+                          <input
+                            type="text"
+                            value={imageColors[displayIndex] || ''}
+                            onChange={(e) => handleImageColorChange(displayIndex, e.target.value)}
+                            placeholder={displayIndex === 0 ? 'Thumbnail color (optional)' : `e.g., ${displayIndex === 1 ? 'brown lightbround morelightbroud' : displayIndex === 2 ? 'green lightgreen morelightgreen' : 'black blue lightbule'}`}
+                            className="w-full rounded-lg border border-gray-200 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:border-primary-500 focus:ring-primary-200 min-h-[40px]"
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
 
+            {/* Show new image previews */}
             {imagePreviews.length > 0 && (
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2 sm:mb-3">Image Preview</p>
+                <p className="text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
+                  {existingImages.length > 0 ? 'New Images' : 'Image Preview'}
+                </p>
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                  {imagePreviews.map((src, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="relative rounded-2xl overflow-hidden border-2 shadow-lg transition-all hover:shadow-xl" style={{
-                        borderColor: index === 0 ? '#92487A' : '#e5e7eb',
-                        borderWidth: index === 0 ? '3px' : '2px'
-                      }}>
-                        <img src={src} alt={`Preview ${index + 1}`} className="w-full h-40 object-cover" />
+                  {imagePreviews.map((src, index) => {
+                    const displayIndex = existingImages.length + index
+                    return (
+                      <div key={`preview-${index}`} className="space-y-2">
+                        <div className="relative rounded-2xl overflow-hidden border-2 shadow-lg transition-all hover:shadow-xl" style={{
+                          borderColor: displayIndex === 0 ? '#92487A' : '#e5e7eb',
+                          borderWidth: displayIndex === 0 ? '3px' : '2px'
+                        }}>
+                          <img src={src} alt={`Preview ${displayIndex + 1}`} className="w-full h-40 object-cover" />
+                          
+                          {/* Remove Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(index)}
+                            className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-lg z-20"
+                            title="Remove image"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
                         
-                        {/* Thumbnail Badge - Enhanced */}
-                        {index === 0 && (
+                          {/* Thumbnail Badge - Enhanced */}
+                          {displayIndex === 0 && (
                           <div className="absolute top-3 left-3 z-10">
                             <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-xl flex items-center gap-2 border-2 border-white/30 backdrop-blur-sm">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1051,39 +1275,39 @@ export default function AdminPanel() {
                           </div>
                         )}
                         
-                        {/* Mark Out of Stock - Enhanced - Moved to bottom-right */}
-                        <div className="absolute bottom-3 right-3 z-10">
-                          <label className={`group flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg cursor-pointer transition-all duration-200 ${
-                            outOfStockImages.includes(index) 
-                              ? 'bg-red-600 hover:bg-red-700 text-white' 
-                              : 'bg-white/95 backdrop-blur-sm hover:bg-white text-gray-700 border-2 border-gray-200 hover:border-red-300'
-                          }`}>
-                            <input
-                              type="checkbox"
-                              checked={outOfStockImages.includes(index)}
-                              onChange={() => toggleOutOfStock(index)}
-                              className="sr-only"
-                            />
-                            {outOfStockImages.includes(index) ? (
-                              <>
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                </svg>
-                                <span className="text-xs font-bold">Out of Stock</span>
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                <span className="text-xs font-semibold">Mark Out of Stock</span>
-                              </>
-                            )}
-                          </label>
-                        </div>
-                        
-                        {/* Out of Stock Overlay - Enhanced */}
-                        {outOfStockImages.includes(index) && (
+                          {/* Mark Out of Stock - Enhanced - Moved to bottom-right */}
+                          <div className="absolute bottom-3 right-3 z-10">
+                            <label className={`group flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg cursor-pointer transition-all duration-200 ${
+                              outOfStockImages.includes(displayIndex) 
+                                ? 'bg-red-600 hover:bg-red-700 text-white' 
+                                : 'bg-white/95 backdrop-blur-sm hover:bg-white text-gray-700 border-2 border-gray-200 hover:border-red-300'
+                            }`}>
+                              <input
+                                type="checkbox"
+                                checked={outOfStockImages.includes(displayIndex)}
+                                onChange={() => toggleOutOfStock(displayIndex)}
+                                className="sr-only"
+                              />
+                              {outOfStockImages.includes(displayIndex) ? (
+                                <>
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                  <span className="text-xs font-bold">Out of Stock</span>
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-5 h-5 text-red-500 group-hover:text-red-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                  <span className="text-xs font-semibold">Mark Out of Stock</span>
+                                </>
+                              )}
+                            </label>
+                          </div>
+                          
+                          {/* Out of Stock Overlay - Enhanced */}
+                          {outOfStockImages.includes(displayIndex) && (
                           <div className="absolute inset-0 bg-gradient-to-br from-red-500/30 via-red-600/20 to-red-700/30 flex items-center justify-center pointer-events-none backdrop-blur-[1px]">
                             <div className="bg-red-600 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-2xl border-4 border-white/50 transform rotate-[-2deg]">
                               <div className="flex items-center gap-2">
@@ -1096,23 +1320,24 @@ export default function AdminPanel() {
                           </div>
                         )}
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-700">
-                          {index === 0 ? 'Thumbnail' : `Image ${index + 1}`} Color Name
-                        </label>
-                        <input
-                          type="text"
-                          value={imageColors[index] || ''}
-                          onChange={(e) => handleImageColorChange(index, e.target.value)}
-                          placeholder={index === 0 ? 'Thumbnail color (optional)' : `e.g., ${index === 1 ? 'brown lightbround morelightbroud' : index === 2 ? 'green lightgreen morelightgreen' : 'black blue lightbule'}`}
-                          className="w-full rounded-lg border border-gray-200 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:border-primary-500 focus:ring-primary-200 min-h-[40px]"
-                        />
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-gray-700">
+                            {displayIndex === 0 ? 'Thumbnail' : `Image ${displayIndex + 1}`} Color Name
+                          </label>
+                          <input
+                            type="text"
+                            value={imageColors[displayIndex] || ''}
+                            onChange={(e) => handleImageColorChange(displayIndex, e.target.value)}
+                            placeholder={displayIndex === 0 ? 'Thumbnail color (optional)' : `e.g., ${displayIndex === 1 ? 'brown lightbround morelightbroud' : displayIndex === 2 ? 'green lightgreen morelightgreen' : 'black blue lightbule'}`}
+                            className="w-full rounded-lg border border-gray-200 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:border-primary-500 focus:ring-primary-200 min-h-[40px]"
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  <span className="font-semibold text-primary-600">Note:</span> The first image (Image 1) is the <strong>Thumbnail</strong> that will be shown in product listings. Images 2-4 will be shown in the product detail page.
+                  <span className="font-semibold text-primary-600">Note:</span> The first image (Image 1) is the <strong>Thumbnail</strong> that will be shown in product listings. Images 2-4 will be shown in the product detail page. You can upload images in bulk or add them one by one. Click the remove button (🗑️) to remove any image.
                 </p>
               </div>
             )}
@@ -1188,32 +1413,6 @@ export default function AdminPanel() {
                   ))}
                 </div>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Upload Product Video</label>
-              <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoChange}
-                  className="hidden"
-                  id="product-video"
-                />
-                <label htmlFor="product-video" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center">
-                  <FiPlay className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
-                  <div>
-                    <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload a video</p>
-                    <p className="text-xs text-gray-400 mt-1">MP4, MOV, WEBM (max 1 minute, auto-compressed)</p>
-                  </div>
-                </label>
-                {videoPreview && (
-                  <video controls className="mt-3 sm:mt-4 rounded-xl sm:rounded-2xl w-full border border-gray-100 max-h-[300px] sm:max-h-[400px]">
-                    <source src={videoPreview} />
-                    Your browser does not support the video tag.
-                  </video>
-                )}
-              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
@@ -1489,7 +1688,6 @@ export default function AdminPanel() {
                       images: p.images || [],
                       outOfStockImages: p.outOfStockImages || [],
                       colorVariants: p.colorVariants,
-                      video: p.video,
                       folderPath: p.folderPath,
                     }))
                     setProducts(transformedProducts)
@@ -1565,10 +1763,8 @@ export default function AdminPanel() {
                             setImagePreviews(product.images)
                             setImageFiles([]) // Clear file objects when editing
                             setExistingImages(product.images || [])
-                            setImageColors(product.imageColors && product.imageColors.length > 0 ? [...product.imageColors, '', '', ''].slice(0, 3) : ['', '', ''])
+                            setImageColors(product.imageColors && product.imageColors.length > 0 ? [...product.imageColors, '', '', ''].slice(0, MAX_IMAGES) : Array(MAX_IMAGES).fill(''))
                             setOutOfStockImages(product.outOfStockImages || [])
-                            setVideoPreview(product.video)
-                            setVideoFile(null) // Clear video file when editing
                             // Load color variants if they exist
                             if (product.colorVariants && product.colorVariants.length > 0) {
                               setColorVariants(product.colorVariants.map(v => ({
@@ -1650,11 +1846,6 @@ export default function AdminPanel() {
                         </div>
                       )}
                     </div>
-                    {product.video && (
-                      <video controls className="w-full rounded-xl sm:rounded-2xl border border-gray-100 max-h-[200px] sm:max-h-[300px]">
-                        <source src={product.video} />
-                      </video>
-                    )}
                   </div>
                 </div>
                   ))}

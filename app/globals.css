@@ -45,6 +45,21 @@
   animation: fade-in-dropdown 0.2s ease-out;
 }
 
+@keyframes slide-in-right {
+  0% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
 @keyframes blob {
   0%, 100% {
     transform: translate(0, 0) scale(1);
