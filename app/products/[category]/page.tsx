@@ -268,7 +268,7 @@ export default function CategoryPage() {
                           }}
                         />
                         {/* Out of Stock Badge */}
-                        {product.outOfStockImages && product.outOfStockImages.includes(0) && (
+                        {product.outOfStockImages && Array.isArray(product.outOfStockImages) && product.outOfStockImages.includes(0) && (
                           <div className="absolute inset-0 bg-red-500/30 flex items-center justify-center z-10 pointer-events-none">
                             <div className="bg-red-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-xl font-bold text-sm sm:text-lg shadow-2xl border-2 border-white pointer-events-none">
                               OUT OF STOCK

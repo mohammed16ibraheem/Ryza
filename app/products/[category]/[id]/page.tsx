@@ -119,7 +119,10 @@ export default function ProductDetailPage() {
   const currentImages = getCurrentImages()
 
   // Check if current image is out of stock
-  const isCurrentImageOutOfStock = product?.outOfStockImages?.includes(currentImageIndex) || false
+  // Note: outOfStockImages indices refer to the main product images, not color variant images
+  const isCurrentImageOutOfStock = product?.outOfStockImages && Array.isArray(product.outOfStockImages) 
+    ? product.outOfStockImages.includes(currentImageIndex) 
+    : false
 
   // Swipe handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -270,7 +273,7 @@ export default function ProductDetailPage() {
                   />
                   
                   {/* Out of Stock Badge */}
-                  {product.outOfStockImages && product.outOfStockImages.includes(currentImageIndex) && (
+                  {product.outOfStockImages && Array.isArray(product.outOfStockImages) && product.outOfStockImages.includes(currentImageIndex) && (
                     <div className="absolute inset-0 bg-red-500/30 flex items-center justify-center z-10 pointer-events-none">
                       <div className="bg-red-600 text-white px-6 py-3 rounded-xl font-bold text-lg shadow-2xl border-2 border-white pointer-events-none">
                         OUT OF STOCK
@@ -340,39 +343,53 @@ export default function ProductDetailPage() {
                         const colorValue = getColorFromName(colorName)
                         const isActive = index === currentImageIndex
                         
+                        const isOutOfStock = product.outOfStockImages && Array.isArray(product.outOfStockImages) && product.outOfStockImages.includes(index)
+                        
                         return (
                           <button
                             key={index}
                             onClick={() => setCurrentImageIndex(index)}
                             className="relative group"
-                            aria-label={`Color: ${colorName}`}
-                            title={colorName}
+                            aria-label={`Color: ${colorName}${isOutOfStock ? ' (Out of Stock)' : ''}`}
+                            title={`${colorName}${isOutOfStock ? ' - Out of Stock' : ''}`}
                           >
                             <div
                               className={`w-2.5 h-2.5 rounded-full transition-all duration-200 ${
                                 isActive 
                                   ? 'ring-2 ring-primary-600' 
                                   : 'ring-1 ring-gray-300 group-hover:ring-gray-400'
-                              }`}
+                              } ${isOutOfStock ? 'opacity-50' : ''}`}
                               style={{ backgroundColor: colorValue }}
                             />
+                            {isOutOfStock && (
+                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-600 rounded-full border border-white" />
+                            )}
                           </button>
                         )
                       })
                     ) : (
                       // Fallback to minimal dots if no color names
-                      currentImages.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setCurrentImageIndex(index)}
-                          className={`transition-all duration-200 ${
-                            index === currentImageIndex 
-                              ? 'w-2 h-2 bg-primary-600 ring-2 ring-primary-600' 
-                              : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
-                          } rounded-full`}
-                          aria-label={`Image ${index + 1}`}
-                        />
-                      ))
+                      currentImages.map((_, index) => {
+                        const isOutOfStock = product.outOfStockImages && Array.isArray(product.outOfStockImages) && product.outOfStockImages.includes(index)
+                        
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentImageIndex(index)}
+                            className={`relative transition-all duration-200 ${
+                              index === currentImageIndex 
+                                ? 'w-2 h-2 bg-primary-600 ring-2 ring-primary-600' 
+                                : 'w-2 h-2 bg-gray-300 hover:bg-gray-400'
+                            } ${isOutOfStock ? 'opacity-50' : ''} rounded-full`}
+                            aria-label={`Image ${index + 1}${isOutOfStock ? ' (Out of Stock)' : ''}`}
+                            title={isOutOfStock ? 'Out of Stock' : `Image ${index + 1}`}
+                          >
+                            {isOutOfStock && (
+                              <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-600 rounded-full border border-white" />
+                            )}
+                          </button>
+                        )
+                      })
                     )}
                   </div>
                 ) : null}
