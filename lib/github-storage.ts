@@ -199,13 +199,23 @@ export async function deleteFromGitHub(path: string, message?: string): Promise<
     })
 
     if (!getResponse.ok) {
-      throw new Error('File not found')
+      // File doesn't exist - that's okay, just return (already deleted)
+      if (getResponse.status === 404) {
+        console.log(`File already deleted or not found: ${path}`)
+        return
+      }
+      throw new Error(`Failed to get file info: ${getResponse.statusText}`)
     }
 
     const fileData = await getResponse.json()
     sha = fileData.sha
   } catch (error) {
-    throw new Error('File not found or cannot be accessed')
+    // If file doesn't exist, that's fine - it's already deleted
+    if (error instanceof Error && error.message.includes('not found')) {
+      console.log(`File already deleted: ${path}`)
+      return
+    }
+    throw error
   }
 
   // Delete file

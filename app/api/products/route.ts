@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE - Delete a product
+// DELETE - Delete a product and all its files permanently
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -192,19 +192,92 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
-    // Delete from database
+    const product = products[productIndex]
+    const deletedFiles: string[] = []
+
+    // Helper function to extract GitHub path from URL
+    const extractGitHubPath = (url: string): string | null => {
+      // Handle raw.githubusercontent.com URLs
+      if (url.includes('raw.githubusercontent.com')) {
+        const match = url.match(/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\/(.+)$/)
+        if (match) return match[1]
+      }
+      // Handle API proxy URLs
+      if (url.includes('/api/images/')) {
+        const match = url.match(/\/api\/images\/(.+)$/)
+        if (match) return match[1]
+      }
+      return null
+    }
+
+    // Delete all product images from GitHub
+    if (product.images && Array.isArray(product.images)) {
+      for (const imageUrl of product.images) {
+        if (imageUrl && typeof imageUrl === 'string') {
+          const filePath = extractGitHubPath(imageUrl)
+          if (filePath) {
+            try {
+              await deleteFromGitHub(filePath, `Delete product image for ${productId}`)
+              deletedFiles.push(filePath)
+            } catch (err) {
+              console.error(`Error deleting image ${imageUrl}:`, err)
+              // Continue deleting other files even if one fails
+            }
+          }
+        }
+      }
+    }
+
+    // Delete product video from GitHub
+    if (product.video && typeof product.video === 'string') {
+      const videoPath = extractGitHubPath(product.video)
+      if (videoPath) {
+        try {
+          await deleteFromGitHub(videoPath, `Delete product video for ${productId}`)
+          deletedFiles.push(videoPath)
+        } catch (err) {
+          console.error(`Error deleting video ${product.video}:`, err)
+        }
+      }
+    }
+
+    // Delete color variant images from GitHub
+    if (product.colorVariants && Array.isArray(product.colorVariants)) {
+      for (const variant of product.colorVariants) {
+        if (variant.images && Array.isArray(variant.images)) {
+          for (const imageUrl of variant.images) {
+            if (imageUrl && typeof imageUrl === 'string') {
+              const filePath = extractGitHubPath(imageUrl)
+              if (filePath) {
+                try {
+                  await deleteFromGitHub(filePath, `Delete color variant image for ${productId}`)
+                  deletedFiles.push(filePath)
+                } catch (err) {
+                  console.error(`Error deleting color variant image ${imageUrl}:`, err)
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Delete product from database
     products.splice(productIndex, 1)
     await saveProductsToStorage(products)
 
+    console.log(`Deleted product ${productId} and ${deletedFiles.length} associated files from GitHub`)
+
     return NextResponse.json({ 
       success: true, 
-      message: 'Product deleted successfully' 
+      message: `Product and ${deletedFiles.length} associated files deleted permanently from GitHub`,
+      deletedFilesCount: deletedFiles.length
     })
   } catch (error) {
     console.error('Error deleting product:', error)
     return NextResponse.json(
-      { error: 'Failed to delete product - storage service not configured', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 503 }
+      { error: 'Failed to delete product', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
     )
   }
 }

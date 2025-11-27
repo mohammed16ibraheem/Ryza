@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { FiShoppingCart, FiCheck } from 'react-icons/fi'
-import Image from 'next/image'
 
 interface Product {
   id: string
@@ -110,8 +109,8 @@ export default function CategoryPage() {
           id: p.id,
           name: p.name || p.title,
           price: p.price,
-          image: p.images && p.images.length > 0 ? p.images[0] : '/placeholder.jpg',
-          images: p.images,
+          image: (p.images && Array.isArray(p.images) && p.images.length > 0 && p.images[0]) ? p.images[0] : '/placeholder.jpg',
+          images: p.images || [],
           category: dbCategoryToUrl[p.category] || p.category.toLowerCase().replace(/\s+/g, '-'),
           subCategory: p.subCategory,
           description: p.description,
@@ -258,13 +257,12 @@ export default function CategoryPage() {
                   >
                     <Link href={`/products/${product.category}/${product.id}`}>
                       <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
-                        <Image
+                        <img
                           src={product.image}
                           alt={product.name}
-                          fill
-                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           loading="lazy"
+                          decoding="async"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = '/placeholder.jpg'
                           }}

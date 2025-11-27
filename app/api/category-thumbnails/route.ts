@@ -215,13 +215,42 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Thumbnail not found for this category' }, { status: 404 })
     }
 
+    // Delete thumbnail image file from GitHub permanently
+    const thumbnailUrl = thumbnails[category]
+    try {
+      // Extract path from URL
+      let filePath = ''
+      
+      if (thumbnailUrl.includes('/api/images/')) {
+        // Extract path after /api/images/
+        const pathMatch = thumbnailUrl.match(/\/api\/images\/(.+)$/)
+        if (pathMatch) {
+          filePath = pathMatch[1]
+        }
+      } else if (thumbnailUrl.includes('raw.githubusercontent.com')) {
+        // Extract path after branch name
+        const pathMatch = thumbnailUrl.match(/\/main\/(.+)$/)
+        if (pathMatch) {
+          filePath = pathMatch[1]
+        }
+      }
+      
+      if (filePath) {
+        await deleteFromGitHub(filePath, `Delete category thumbnail for ${category}`)
+        console.log(`Deleted thumbnail file: ${filePath}`)
+      }
+    } catch (err) {
+      console.warn('Could not delete thumbnail file from GitHub:', err)
+      // Continue with database deletion even if file deletion fails
+    }
+
     // Remove from database
     delete thumbnails[category]
     await saveThumbnailsToStorage(thumbnails)
 
     return NextResponse.json({
       success: true,
-      message: 'Thumbnail deleted successfully'
+      message: 'Thumbnail deleted permanently from GitHub'
     })
   } catch (error) {
     console.error('Error deleting thumbnail:', error)

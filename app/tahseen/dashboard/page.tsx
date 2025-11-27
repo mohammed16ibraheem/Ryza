@@ -761,60 +761,62 @@ export default function AdminPanel() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 py-16">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8 md:py-12 lg:py-16">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 space-y-6 sm:space-y-8 md:space-y-10">
         {/* Header with Logout */}
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end mb-2 sm:mb-4">
           <button
             onClick={handleLogout}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center gap-2 text-sm sm:text-base min-h-[44px]"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            Logout
+            <span className="hidden sm:inline">Logout</span>
+            <span className="sm:hidden">Out</span>
           </button>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-            <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-primary-600 font-semibold">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 border border-gray-100">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
+            <div className="flex-1">
+              <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-primary-600 font-semibold">
                 Admin Control
               </p>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mt-1">
                 {editingProductId ? 'Edit Product' : 'Create a new product card'}
               </h1>
-              <p className="text-gray-500 mt-2">
+              <p className="text-gray-500 mt-2 text-sm sm:text-base">
                 Upload up to 4 images (1 thumbnail + 3 product images) and 1 video with pricing & descriptions. Choose the collection where it should appear.
               </p>
             </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <FiCheckCircle className="text-primary-600" />
-              <span>Files are uploaded to GitHub repository and organized by category.</span>
+            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 flex-shrink-0">
+              <FiCheckCircle className="text-primary-600 flex-shrink-0" />
+              <span className="hidden sm:inline">Files are uploaded to GitHub repository and organized by category.</span>
+              <span className="sm:hidden">GitHub storage</span>
             </div>
           </div>
 
           {uploadStatus && (
-            <div className={`mb-6 p-6 rounded-2xl shadow-lg animate-fade-in ${
+            <div className={`mb-4 sm:mb-6 p-4 sm:p-6 rounded-xl sm:rounded-2xl shadow-lg animate-fade-in ${
               uploadStatus.includes('✅') 
                 ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-800 border-2 border-green-300' 
                 : uploadStatus.includes('❌')
                 ? 'bg-red-50 text-red-700 border-2 border-red-200'
                 : 'bg-blue-50 text-blue-700 border-2 border-blue-200'
             }`}>
-              <div className="flex items-center gap-4">
+              <div className="flex items-start sm:items-center gap-3 sm:gap-4">
                 {uploadStatus.includes('✅') && (
-                  <div className="flex-shrink-0 w-14 h-14 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
-                    <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex-shrink-0 w-10 h-10 sm:w-14 sm:h-14 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+                    <svg className="w-6 h-6 sm:w-9 sm:h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
                 )}
-                <div className="flex-1">
-                  <p className="font-bold text-xl mb-2">{uploadStatus}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-base sm:text-lg md:text-xl mb-1 sm:mb-2 break-words">{uploadStatus}</p>
                   {uploadStatus.includes('✅') && (
-                    <p className="text-base text-green-700 font-medium">
+                    <p className="text-sm sm:text-base text-green-700 font-medium">
                       Your product has been {editingProductId ? 'updated' : 'uploaded'} successfully! You can view it in the "All Products" section below.
                     </p>
                   )}
@@ -823,8 +825,8 @@ export default function AdminPanel() {
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">Product Title</label>
                 <input
@@ -832,7 +834,7 @@ export default function AdminPanel() {
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   placeholder="Ex: Silk Hijab - Rose Gold"
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 focus:border-primary-500 focus:ring-primary-200"
+                  className="w-full rounded-xl sm:rounded-2xl border border-gray-200 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:border-primary-500 focus:ring-primary-200 min-h-[44px]"
                   required
                 />
               </div>
@@ -845,12 +847,12 @@ export default function AdminPanel() {
                   value={price}
                   onChange={(event) => setPrice(event.target.value)}
                   placeholder="Ex: 2499"
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 focus:border-primary-500 focus:ring-primary-200"
+                  className="w-full rounded-xl sm:rounded-2xl border border-gray-200 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:border-primary-500 focus:ring-primary-200 min-h-[44px]"
                   required
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">Weight (g/kg)</label>
                 <input
@@ -858,11 +860,11 @@ export default function AdminPanel() {
                   value={weight}
                   onChange={(event) => setWeight(event.target.value)}
                   placeholder="Ex: 250g or 1.5kg"
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 focus:border-primary-500 focus:ring-primary-200"
+                  className="w-full rounded-xl sm:rounded-2xl border border-gray-200 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:border-primary-500 focus:ring-primary-200 min-h-[44px]"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 flex-wrap">
                   <span>Discount</span>
                   <span className="text-xs text-gray-400 font-normal">(optional, enter %)</span>
                 </label>
@@ -875,7 +877,7 @@ export default function AdminPanel() {
                     value={discount}
                     onChange={(event) => setDiscount(event.target.value)}
                     placeholder="Ex: 30 (for 30% off)"
-                    className="w-full rounded-2xl border border-gray-200 px-4 py-3 focus:border-primary-500 focus:ring-primary-200 pr-20"
+                    className="w-full rounded-xl sm:rounded-2xl border border-gray-200 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:border-primary-500 focus:ring-primary-200 pr-16 sm:pr-20 min-h-[44px]"
                   />
                   {discount && (
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -926,12 +928,12 @@ export default function AdminPanel() {
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="Share material, design details, styling tips..."
                 rows={4}
-                className="w-full rounded-2xl border border-gray-200 px-4 py-3 focus:border-primary-500 focus:ring-primary-200"
+                className="w-full rounded-xl sm:rounded-2xl border border-gray-200 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:border-primary-500 focus:ring-primary-200 resize-y"
                 required
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">Collection</label>
                 <select
@@ -942,7 +944,7 @@ export default function AdminPanel() {
                       setSubCategory('')
                     }
                   }}
-                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-white focus:border-primary-500 focus:ring-primary-200"
+                  className="w-full rounded-xl sm:rounded-2xl border border-gray-200 px-3 sm:px-4 py-2.5 sm:py-3 bg-white text-sm sm:text-base focus:border-primary-500 focus:ring-primary-200 min-h-[44px]"
                 >
                   {PRODUCT_CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
@@ -965,7 +967,7 @@ export default function AdminPanel() {
                   <select
                     value={subCategory}
                     onChange={(event) => setSubCategory(event.target.value)}
-                    className="w-full rounded-2xl border border-gray-200 px-4 py-3 bg-white focus:border-primary-500 focus:ring-primary-200"
+                    className="w-full rounded-xl sm:rounded-2xl border border-gray-200 px-3 sm:px-4 py-2.5 sm:py-3 bg-white text-sm sm:text-base focus:border-primary-500 focus:ring-primary-200 min-h-[44px]"
                     required
                   >
                     <option value="">Select type...</option>
@@ -978,7 +980,7 @@ export default function AdminPanel() {
               ) : (
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-700">Upload Product Images</label>
-                  <div className="border border-dashed border-gray-300 rounded-2xl p-4 text-center">
+                  <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
                     <input
                       type="file"
                       accept="image/*"
@@ -987,11 +989,11 @@ export default function AdminPanel() {
                       className="hidden"
                       id="product-images"
                     />
-                    <label htmlFor="product-images" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500">
-                      <FiUploadCloud className="w-8 h-8 text-primary-500" />
+                    <label htmlFor="product-images" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[120px] sm:min-h-[140px] justify-center">
+                      <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
                       <div>
-                        <p className="font-semibold text-gray-700">Upload up to 4 images</p>
-                        <p className="text-xs text-gray-400">PNG, JPG, JPEG (1st image = Thumbnail)</p>
+                        <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload up to 4 images</p>
+                        <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG (1st image = Thumbnail)</p>
                       </div>
                     </label>
                     <p className="text-xs text-gray-400 mt-2">Selected: {imagePreviews.length} / {MAX_IMAGES}</p>
@@ -1003,7 +1005,7 @@ export default function AdminPanel() {
             {category === 'Hijabs' && (
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700">Upload Product Images</label>
-                <div className="border border-dashed border-gray-300 rounded-2xl p-4 text-center">
+                <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
                   <input
                     type="file"
                     accept="image/*"
@@ -1012,11 +1014,11 @@ export default function AdminPanel() {
                     className="hidden"
                     id="product-images-hijabs"
                   />
-                  <label htmlFor="product-images-hijabs" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500">
-                    <FiUploadCloud className="w-8 h-8 text-primary-500" />
+                  <label htmlFor="product-images-hijabs" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[120px] sm:min-h-[140px] justify-center">
+                    <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
                     <div>
-                      <p className="font-semibold text-gray-700">Upload up to 4 images</p>
-                      <p className="text-xs text-gray-400">PNG, JPG, JPEG (1st image = Thumbnail)</p>
+                      <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload up to 4 images</p>
+                      <p className="text-xs text-gray-400 mt-1">PNG, JPG, JPEG (1st image = Thumbnail)</p>
                     </div>
                   </label>
                   <p className="text-xs text-gray-400 mt-2">Selected: {imagePreviews.length} / {MAX_IMAGES}</p>
@@ -1026,8 +1028,8 @@ export default function AdminPanel() {
 
             {imagePreviews.length > 0 && (
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Image Preview</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <p className="text-sm font-semibold text-gray-700 mb-2 sm:mb-3">Image Preview</p>
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {imagePreviews.map((src, index) => (
                     <div key={index} className="space-y-2">
                       <div className="relative rounded-2xl overflow-hidden border-2 shadow-lg transition-all hover:shadow-xl" style={{
@@ -1103,7 +1105,7 @@ export default function AdminPanel() {
                           value={imageColors[index] || ''}
                           onChange={(e) => handleImageColorChange(index, e.target.value)}
                           placeholder={index === 0 ? 'Thumbnail color (optional)' : `e.g., ${index === 1 ? 'brown lightbround morelightbroud' : index === 2 ? 'green lightgreen morelightgreen' : 'black blue lightbule'}`}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary-500 focus:ring-primary-200"
+                          className="w-full rounded-lg border border-gray-200 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:border-primary-500 focus:ring-primary-200 min-h-[40px]"
                         />
                       </div>
                     </div>
@@ -1116,44 +1118,44 @@ export default function AdminPanel() {
             )}
 
             {/* Color Variants Section */}
-            <div className="space-y-4 border-t border-gray-200 pt-6">
-              <div className="flex items-center justify-between">
+            <div className="space-y-3 sm:space-y-4 border-t border-gray-200 pt-4 sm:pt-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <label className="text-sm font-semibold text-gray-700">Color Variants (Optional)</label>
                 <span className="text-xs text-gray-500">Add different colors with their own images</span>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
                 <input
                   type="text"
                   value={currentColor}
                   onChange={(e) => setCurrentColor(e.target.value)}
                   placeholder="Enter color name (e.g., Red, Blue, Black)"
-                  className="flex-1 rounded-2xl border border-gray-200 px-4 py-2 focus:border-primary-500 focus:ring-primary-200"
+                  className="flex-1 rounded-xl sm:rounded-2xl border border-gray-200 px-3 sm:px-4 py-2 text-sm sm:text-base focus:border-primary-500 focus:ring-primary-200 min-h-[44px]"
                 />
                 <button
                   type="button"
                   onClick={addColorVariant}
-                  className="px-6 py-2 bg-primary-600 text-white rounded-2xl font-semibold hover:bg-primary-700 transition-colors"
+                  className="px-4 sm:px-6 py-2 bg-primary-600 text-white rounded-xl sm:rounded-2xl font-semibold hover:bg-primary-700 transition-colors text-sm sm:text-base min-h-[44px] whitespace-nowrap"
                 >
                   Add Color
                 </button>
               </div>
 
               {colorVariants.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   {colorVariants.map((variant, index) => (
-                    <div key={index} className="border border-gray-200 rounded-2xl p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="font-semibold text-gray-900 capitalize">{variant.color}</h4>
+                    <div key={index} className="border border-gray-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
+                        <h4 className="font-semibold text-gray-900 capitalize text-sm sm:text-base">{variant.color}</h4>
                         <button
                           type="button"
                           onClick={() => removeColorVariant(index)}
-                          className="text-red-600 hover:text-red-700 text-sm font-semibold"
+                          className="text-red-600 hover:text-red-700 text-xs sm:text-sm font-semibold px-2 py-1 rounded hover:bg-red-50 min-h-[32px] sm:min-h-[36px]"
                         >
                           Remove
                         </button>
                       </div>
-                      <div className="border border-dashed border-gray-300 rounded-2xl p-4 text-center">
+                      <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
                         <input
                           type="file"
                           accept="image/*"
@@ -1162,11 +1164,11 @@ export default function AdminPanel() {
                           className="hidden"
                           id={`color-images-${index}`}
                         />
-                        <label htmlFor={`color-images-${index}`} className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500">
-                          <FiUploadCloud className="w-6 h-6 text-primary-500" />
+                        <label htmlFor={`color-images-${index}`} className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center">
+                          <FiUploadCloud className="w-5 h-5 sm:w-6 sm:h-6 text-primary-500" />
                           <div>
-                            <p className="font-semibold text-gray-700 text-sm">Upload images for {variant.color}</p>
-                            <p className="text-xs text-gray-400">Up to {MAX_IMAGES} images</p>
+                            <p className="font-semibold text-gray-700 text-xs sm:text-sm">Upload images for {variant.color}</p>
+                            <p className="text-xs text-gray-400 mt-1">Up to {MAX_IMAGES} images</p>
                           </div>
                         </label>
                         <p className="text-xs text-gray-400 mt-2">
@@ -1174,10 +1176,10 @@ export default function AdminPanel() {
                         </p>
                       </div>
                       {variant.imagePreviews.length > 0 && (
-                        <div className="grid grid-cols-3 gap-2 mt-3">
+                        <div className="grid grid-cols-3 gap-2 mt-2 sm:mt-3">
                           {variant.imagePreviews.map((src, imgIndex) => (
                             <div key={imgIndex} className="rounded-lg overflow-hidden border border-gray-100">
-                              <img src={src} alt={`${variant.color} ${imgIndex + 1}`} className="w-full h-24 object-cover" />
+                              <img src={src} alt={`${variant.color} ${imgIndex + 1}`} className="w-full h-20 sm:h-24 object-cover" />
                             </div>
                           ))}
                         </div>
@@ -1190,7 +1192,7 @@ export default function AdminPanel() {
 
             <div className="space-y-2">
               <label className="text-sm font-semibold text-gray-700">Upload Product Video</label>
-              <div className="border border-dashed border-gray-300 rounded-2xl p-4 text-center">
+              <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
                 <input
                   type="file"
                   accept="video/*"
@@ -1198,15 +1200,15 @@ export default function AdminPanel() {
                   className="hidden"
                   id="product-video"
                 />
-                <label htmlFor="product-video" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500">
-                  <FiPlay className="w-8 h-8 text-primary-500" />
+                <label htmlFor="product-video" className="cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center">
+                  <FiPlay className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
                   <div>
-                    <p className="font-semibold text-gray-700">Upload a video</p>
-                    <p className="text-xs text-gray-400">MP4, MOV, WEBM (max 1 minute, auto-compressed)</p>
+                    <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload a video</p>
+                    <p className="text-xs text-gray-400 mt-1">MP4, MOV, WEBM (max 1 minute, auto-compressed)</p>
                   </div>
                 </label>
                 {videoPreview && (
-                  <video controls className="mt-4 rounded-2xl w-full border border-gray-100">
+                  <video controls className="mt-3 sm:mt-4 rounded-xl sm:rounded-2xl w-full border border-gray-100 max-h-[300px] sm:max-h-[400px]">
                     <source src={videoPreview} />
                     Your browser does not support the video tag.
                   </video>
@@ -1214,18 +1216,18 @@ export default function AdminPanel() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button
                 type="submit"
                 disabled={uploading}
-                className="inline-flex items-center justify-center rounded-full bg-primary-600 px-8 py-3 font-semibold text-white shadow-lg shadow-primary-600/30 hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center rounded-full bg-primary-600 px-6 sm:px-8 py-2.5 sm:py-3 font-semibold text-white text-sm sm:text-base shadow-lg shadow-primary-600/30 hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
               >
                 {uploading ? 'Uploading...' : editingProductId ? 'Update Product' : 'Upload Product'}
               </button>
               <button
                 type="button"
                 onClick={resetForm}
-                className="rounded-full border border-gray-300 px-8 py-3 font-semibold text-gray-600 hover:border-primary-200 hover:text-primary-600 transition-colors"
+                className="rounded-full border border-gray-300 px-6 sm:px-8 py-2.5 sm:py-3 font-semibold text-gray-600 text-sm sm:text-base hover:border-primary-200 hover:text-primary-600 transition-colors min-h-[44px]"
               >
                 Reset Form
               </button>
@@ -1234,20 +1236,20 @@ export default function AdminPanel() {
         </div>
 
         {/* Category Thumbnails Management Section */}
-        <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-gray-100">
-          <div className="mb-6">
-            <p className="text-sm uppercase tracking-[0.2em] text-primary-600 font-semibold mb-2">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 border border-gray-100">
+          <div className="mb-4 sm:mb-6">
+            <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-primary-600 font-semibold mb-1 sm:mb-2">
               Category Management
             </p>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
               Category Thumbnails
             </h2>
-            <p className="text-gray-600 text-sm sm:text-base">
+            <p className="text-gray-600 text-xs sm:text-sm md:text-base">
               Upload custom thumbnail images for each category in the "Shop by Category" section. These images will be displayed on the homepage.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {categoryThumbnailConfig.map((category) => (
               <div
                 key={category.key}
@@ -1331,20 +1333,20 @@ export default function AdminPanel() {
         </div>
 
         {/* Shipping Settings Section */}
-        <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-gray-100">
-          <div className="mb-6">
-            <p className="text-sm uppercase tracking-[0.2em] text-primary-600 font-semibold mb-2">
+        <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 border border-gray-100">
+          <div className="mb-4 sm:mb-6">
+            <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-primary-600 font-semibold mb-1 sm:mb-2">
               Store Settings
             </p>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-1 sm:mb-2">
               Shipping Settings
             </h2>
-            <p className="text-gray-600 text-sm sm:text-base">
+            <p className="text-gray-600 text-xs sm:text-sm md:text-base">
               Set the free shipping threshold and shipping cost. Enter 0 for free shipping on all orders, or enter an amount above which orders get free shipping.
             </p>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Free Shipping Threshold */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1361,10 +1363,10 @@ export default function AdminPanel() {
                     freeShippingThreshold: parseFloat(e.target.value) || 0,
                   })
                 }
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all text-gray-900"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all text-gray-900 text-sm sm:text-base min-h-[44px]"
                 placeholder="5000"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1.5 sm:mt-2">
                 Enter 0 for free shipping on all orders. Enter an amount (e.g., 1000) - orders above this amount get free shipping, orders below pay the shipping cost.
               </p>
             </div>
@@ -1385,41 +1387,41 @@ export default function AdminPanel() {
                     shippingCost: parseFloat(e.target.value) || 0,
                   })
                 }
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all text-gray-900"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-gray-300 rounded-lg focus:border-primary-500 focus:ring-2 focus:ring-primary-200 outline-none transition-all text-gray-900 text-sm sm:text-base min-h-[44px]"
                 placeholder="200"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-1.5 sm:mt-2">
                 Enter the shipping cost for orders below the free shipping threshold (e.g., 200, 150, 250).
               </p>
             </div>
 
             {/* Preview Section */}
-            <div className="bg-primary-50 border-2 border-primary-200 rounded-xl p-6">
-              <h3 className="text-lg font-bold text-primary-900 mb-4">
+            <div className="bg-primary-50 border-2 border-primary-200 rounded-lg sm:rounded-xl p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-primary-900 mb-3 sm:mb-4">
                 Preview
               </h3>
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
                 {shippingSettings.freeShippingThreshold === 0 ? (
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                     <span className="text-gray-700">Any Order Amount</span>
                     <span className="font-semibold text-green-600">Shipping: Free</span>
                   </div>
                 ) : (
                   <>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Order Amount: ₹{Math.max(1000, Math.floor(shippingSettings.freeShippingThreshold * 0.5)).toLocaleString('en-IN')}</span>
-                      <span className="font-semibold text-gray-900">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                      <span className="text-gray-700 break-words">Order Amount: ₹{Math.max(1000, Math.floor(shippingSettings.freeShippingThreshold * 0.5)).toLocaleString('en-IN')}</span>
+                      <span className="font-semibold text-gray-900 whitespace-nowrap">
                         Shipping: ₹{shippingSettings.shippingCost.toLocaleString('en-IN')}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700">Order Amount: ₹{shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}</span>
-                      <span className="font-semibold text-green-600">Shipping: Free</span>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                      <span className="text-gray-700 break-words">Order Amount: ₹{shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}</span>
+                      <span className="font-semibold text-green-600 whitespace-nowrap">Shipping: Free</span>
                     </div>
                   </>
                 )}
-                <div className="pt-3 border-t border-primary-200">
-                  <p className="text-xs text-primary-800">
+                <div className="pt-2 sm:pt-3 border-t border-primary-200">
+                  <p className="text-xs text-primary-800 leading-relaxed">
                     {shippingSettings.freeShippingThreshold === 0
                       ? '✅ Free shipping is enabled for all orders.'
                       : `💡 Orders above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')} get free shipping. Orders below pay ₹${shippingSettings.shippingCost.toLocaleString('en-IN')} shipping.`}
@@ -1433,7 +1435,7 @@ export default function AdminPanel() {
               type="button"
               onClick={handleSaveShippingSettings}
               disabled={savingShippingSettings}
-              className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px]"
+              className="w-full px-4 sm:px-6 py-2.5 sm:py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[44px] text-sm sm:text-base"
             >
               {savingShippingSettings ? (
                 <>
@@ -1451,23 +1453,24 @@ export default function AdminPanel() {
         </div>
 
         {loadingProducts ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading products...</p>
+          <div className="text-center py-8 sm:py-12">
+            <p className="text-gray-600 text-sm sm:text-base">Loading products...</p>
           </div>
         ) : products.length > 0 ? (
           <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                 {selectedFolder ? `Products in ${selectedFolder}` : `All Products (${products.length})`}
               </h2>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 {selectedFolder && (
                   <button
                     onClick={() => setSelectedFolder(null)}
-                    className="text-sm text-gray-600 hover:text-primary-600 font-semibold flex items-center gap-1"
+                    className="text-xs sm:text-sm text-gray-600 hover:text-primary-600 font-semibold flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-gray-100 min-h-[36px] sm:min-h-[40px]"
                   >
                     <span>←</span>
-                    <span>Back to All</span>
+                    <span className="hidden sm:inline">Back to All</span>
+                    <span className="sm:hidden">Back</span>
                   </button>
                 )}
                 <button
@@ -1492,7 +1495,7 @@ export default function AdminPanel() {
                     setProducts(transformedProducts)
                     setLoadingProducts(false)
                   }}
-                  className="text-sm text-primary-600 hover:text-primary-700 font-semibold"
+                  className="text-xs sm:text-sm text-primary-600 hover:text-primary-700 font-semibold px-2 py-1.5 rounded-lg hover:bg-primary-50 min-h-[36px] sm:min-h-[40px]"
                 >
                   Refresh
                 </button>
@@ -1502,23 +1505,23 @@ export default function AdminPanel() {
             {/* Folder Navigation - Show only when no folder selected */}
             {!selectedFolder ? (
               <div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-4">Browse by Folder</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">Browse by Folder</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                   {Array.from(new Set(products.map(p => p.folderPath).filter(Boolean))).map((folderPath) => {
                     const folderProducts = products.filter(p => p.folderPath === folderPath)
                     return (
                       <button
                         key={folderPath}
                         onClick={() => setSelectedFolder(folderPath || '')}
-                        className="p-5 bg-white rounded-xl border-2 border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group shadow-sm hover:shadow-md"
+                        className="p-3 sm:p-4 md:p-5 bg-white rounded-lg sm:rounded-xl border-2 border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all text-left group shadow-sm hover:shadow-md min-h-[80px] sm:min-h-[100px]"
                       >
-                        <div className="flex items-center gap-3 mb-2">
-                          <FiFolder className="w-6 h-6 text-primary-600 group-hover:text-primary-700" />
-                          <span className="text-base font-semibold text-gray-700 group-hover:text-primary-600">
+                        <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                          <FiFolder className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 group-hover:text-primary-700 flex-shrink-0" />
+                          <span className="text-sm sm:text-base font-semibold text-gray-700 group-hover:text-primary-600 truncate">
                             {folderPath?.replace('images/', '') || 'No Folder'}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-500 font-medium">
+                        <p className="text-xs sm:text-sm text-gray-500 font-medium">
                           {folderProducts.length} {folderProducts.length === 1 ? 'product' : 'products'}
                         </p>
                       </button>
@@ -1529,25 +1532,25 @@ export default function AdminPanel() {
             ) : (
               /* Products Grid - Show only when folder is selected */
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {products.filter(p => p.folderPath === selectedFolder).map((product) => (
-                <div key={product.id} className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+                <div key={product.id} className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
                   <div className="aspect-[4/3] relative">
                     {product.images[0] ? (
                       <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                      <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-xs sm:text-sm">
                         No image
                       </div>
                     )}
-                    <span className="absolute top-4 left-4 bg-white/80 text-xs font-semibold text-gray-800 px-3 py-1 rounded-full">
+                    <span className="absolute top-2 sm:top-4 left-2 sm:left-4 bg-white/90 backdrop-blur-sm text-xs font-semibold text-gray-800 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs">
                       {product.category}{product.subCategory ? ` - ${product.subCategory}` : ''}
                     </span>
                   </div>
-                  <div className="p-6 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-semibold text-gray-900 text-lg">{product.title}</h3>
-                      <div className="flex items-center gap-2">
+                  <div className="p-4 sm:p-6 space-y-2 sm:space-y-3">
+                    <div className="flex items-start justify-between gap-2 sm:gap-3">
+                      <h3 className="font-semibold text-gray-900 text-base sm:text-lg flex-1 min-w-0 pr-2">{product.title}</h3>
+                      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                         <button
                           onClick={() => {
                             setEditingProductId(product.id)
@@ -1579,68 +1582,68 @@ export default function AdminPanel() {
                             }
                             window.scrollTo({ top: 0, behavior: 'smooth' })
                           }}
-                          className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors"
+                          className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
                           title="Edit product"
                         >
-                          <FiEdit2 className="w-5 h-5" />
+                          <FiEdit2 className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(product.id)}
-                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
                           title="Delete product"
                         >
-                          <FiTrash2 className="w-5 h-5" />
+                          <FiTrash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500 line-clamp-2">{product.description}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 line-clamp-2">{product.description}</p>
                     {product.weight && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
                         <span className="font-semibold">Weight:</span>
                         <span>{product.weight}</span>
                       </div>
                     )}
                     <div className="space-y-2">
                       {product.discount && Number(product.discount) > 0 ? (
-                        <div className="flex items-baseline gap-3 flex-wrap">
+                        <div className="flex items-baseline gap-2 sm:gap-3 flex-wrap">
                           <div className="flex items-baseline gap-1 price-text text-gray-400">
-                            <span className="currency text-lg">₹</span>
-                            <p className="text-2xl font-bold line-through">
+                            <span className="currency text-sm sm:text-lg">₹</span>
+                            <p className="text-xl sm:text-2xl font-bold line-through">
                               {Math.floor(Number(product.price)).toLocaleString('en-IN')}
                             </p>
                             {Number(product.price) % 1 !== 0 && (
-                              <span className="text-lg line-through">
+                              <span className="text-sm sm:text-lg line-through">
                                 .{Math.round((Number(product.price) % 1) * 100).toString().padStart(2, '0')}
                               </span>
                             )}
                           </div>
                           <div className="flex items-baseline gap-1 price-text text-primary-600">
-                            <span className="currency text-xl text-gray-400">₹</span>
-                            <p className="text-3xl font-bold">
+                            <span className="currency text-base sm:text-xl text-gray-400">₹</span>
+                            <p className="text-2xl sm:text-3xl font-bold">
                               {Math.floor(Number(product.price) * (1 - Number(product.discount) / 100)).toLocaleString('en-IN')}
                             </p>
                             {(Number(product.price) * (1 - Number(product.discount) / 100)) % 1 !== 0 && (
-                              <span className="text-xl font-semibold">
+                              <span className="text-base sm:text-xl font-semibold">
                                 .{Math.round(((Number(product.price) * (1 - Number(product.discount) / 100)) % 1) * 100).toString().padStart(2, '0')}
                               </span>
                             )}
                           </div>
-                          <span className="inline-flex flex-col items-center justify-center bg-gradient-to-r from-red-500 via-pink-500 to-primary-600 text-white px-4 py-2 rounded-full shadow-lg transform hover:scale-105 transition-transform relative overflow-hidden min-w-[90px]">
+                          <span className="inline-flex flex-col items-center justify-center bg-gradient-to-r from-red-500 via-pink-500 to-primary-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full shadow-lg transform hover:scale-105 transition-transform relative overflow-hidden min-w-[75px] sm:min-w-[90px]">
                             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></span>
                             <span className="relative z-10 flex flex-col items-center gap-0.5">
-                              <span className="text-[10px] font-extrabold uppercase tracking-wider leading-tight">DISCOUNT</span>
-                              <span className="text-xs font-bold">{product.discount}% OFF</span>
+                              <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider leading-tight">DISCOUNT</span>
+                              <span className="text-[10px] sm:text-xs font-bold">{product.discount}% OFF</span>
                             </span>
                           </span>
                         </div>
                       ) : (
                         <div className="flex items-baseline gap-1 price-text text-primary-600">
-                          <span className="currency text-xl text-gray-400">₹</span>
-                          <p className="text-3xl font-bold">
+                          <span className="currency text-base sm:text-xl text-gray-400">₹</span>
+                          <p className="text-2xl sm:text-3xl font-bold">
                             {Math.floor(Number(product.price)).toLocaleString('en-IN')}
                           </p>
                           {Number(product.price) % 1 !== 0 && (
-                            <span className="text-xl font-semibold">
+                            <span className="text-base sm:text-xl font-semibold">
                               .{Math.round((Number(product.price) % 1) * 100).toString().padStart(2, '0')}
                             </span>
                           )}
@@ -1648,7 +1651,7 @@ export default function AdminPanel() {
                       )}
                     </div>
                     {product.video && (
-                      <video controls className="w-full rounded-2xl border border-gray-100">
+                      <video controls className="w-full rounded-xl sm:rounded-2xl border border-gray-100 max-h-[200px] sm:max-h-[300px]">
                         <source src={product.video} />
                       </video>
                     )}
@@ -1660,8 +1663,8 @@ export default function AdminPanel() {
             )}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-600">No products yet. Upload your first product above!</p>
+          <div className="text-center py-8 sm:py-12">
+            <p className="text-gray-600 text-sm sm:text-base">No products yet. Upload your first product above!</p>
           </div>
         )}
       </div>
