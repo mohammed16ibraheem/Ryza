@@ -43,13 +43,18 @@ async function fileToBase64(file: File | Blob): Promise<string> {
 
 /**
  * Get public URL for a file stored in GitHub
- * For private repos, we use our API proxy
+ * For public repos, use raw.githubusercontent.com directly (faster)
+ * For private repos, use our API proxy
  */
 function getPublicUrl(path: string, config: GitHubConfig): string {
-  // Use our API proxy for private repositories
-  // This works for both public and private repos
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://theryza.com'
-  return `${siteUrl}/api/images/${path}`
+  // For public repositories, use raw.githubusercontent.com directly (faster)
+  // For private repos, you can use the proxy API
+  // Since repo is now public, use direct GitHub URLs
+  return `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${path}`
+  
+  // Alternative: Use proxy API (works for both public and private)
+  // const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://theryza.com'
+  // return `${siteUrl}/api/images/${path}`
 }
 
 /**

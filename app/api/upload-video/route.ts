@@ -52,9 +52,20 @@ export async function POST(request: NextRequest) {
       basePath = `${basePath}/${subFolder}`
     }
 
-    // Generate unique filename
+    // Generate unique filename with proper extension
     const timestamp = Date.now()
-    const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    let originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    
+    // Ensure file has an extension
+    if (!originalName.includes('.')) {
+      // If no extension, determine from file type
+      const extension = file.type.includes('webm') ? '.webm' :
+                       file.type.includes('mp4') ? '.mp4' :
+                       file.type.includes('mov') ? '.mov' :
+                       file.type.includes('avi') ? '.avi' : '.webm'
+      originalName = `video${extension}`
+    }
+    
     const fileName = `${productId}_${timestamp}_video_${originalName}`
     const filePath = `${basePath}/${fileName}`
 

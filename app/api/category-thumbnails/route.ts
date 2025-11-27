@@ -18,26 +18,35 @@ async function getThumbnailsFromStorage(): Promise<{ [key: string]: string }> {
       return {}
     }
 
-    // Use GitHub API for private repos
-    const apiUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${THUMBNAILS_FILE_PATH}?ref=${config.branch}`
-    const response = await fetch(apiUrl, {
+    // For public repos, use raw.githubusercontent.com (faster)
+    const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${THUMBNAILS_FILE_PATH}`
+    const response = await fetch(rawUrl, {
       cache: 'no-store',
-      headers: {
-        'Authorization': `token ${config.token}`,
-        'Accept': 'application/vnd.github.v3+json',
-      },
     })
 
     if (!response.ok) {
       if (response.status === 404) return {}
+      // Fallback to API for private repos
+      try {
+        const apiUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${THUMBNAILS_FILE_PATH}?ref=${config.branch}`
+        const apiResponse = await fetch(apiUrl, {
+          headers: {
+            'Authorization': `token ${config.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        })
+        if (apiResponse.ok) {
+          const apiData = await apiResponse.json()
+          if (apiData.content) {
+            const text = Buffer.from(apiData.content, 'base64').toString('utf-8')
+            return JSON.parse(text)
+          }
+        }
+      } catch {}
       return {}
     }
 
-    const data = await response.json()
-    if (!data.content) return {}
-
-    // Decode base64 content
-    const text = Buffer.from(data.content, 'base64').toString('utf-8')
+    const text = await response.text()
     if (!text || text.trim() === '') return {}
 
     return JSON.parse(text)
@@ -128,12 +137,30 @@ export async function POST(request: NextRequest) {
     if (thumbnails[category]) {
       try {
         // Extract path from URL
+        // URL format: https://theryza.com/api/images/public/images/category-thumbnails/...
         const oldUrl = thumbnails[category]
-        const urlParts = oldUrl.split('/')
-        const oldPath = urlParts.slice(urlParts.indexOf('public')).join('/')
-        await deleteFromGitHub(oldPath, `Delete old thumbnail for ${category}`)
+        let oldPath = ''
+        
+        if (oldUrl.includes('/api/images/')) {
+          // Extract path after /api/images/
+          const pathMatch = oldUrl.match(/\/api\/images\/(.+)$/)
+          if (pathMatch) {
+            oldPath = pathMatch[1]
+          }
+        } else if (oldUrl.includes('raw.githubusercontent.com')) {
+          // Legacy format: extract path after branch name
+          const pathMatch = oldUrl.match(/\/main\/(.+)$/)
+          if (pathMatch) {
+            oldPath = pathMatch[1]
+          }
+        }
+        
+        if (oldPath) {
+          await deleteFromGitHub(oldPath, `Delete old thumbnail for ${category}`)
+        }
       } catch (err) {
         console.warn('Could not delete old thumbnail:', err)
+        // Continue even if deletion fails
       }
     }
     

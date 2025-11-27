@@ -18,13 +18,12 @@ async function getProductsFromStorage(): Promise<any[]> {
       return []
     }
 
-    // Fetch products.json from GitHub API (works for private repos)
-    const apiUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${PRODUCTS_FILE_PATH}?ref=${config.branch}`
-    const response = await fetch(apiUrl, {
+    // For public repos, use raw.githubusercontent.com (faster)
+    // For private repos, use GitHub API with auth
+    const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${PRODUCTS_FILE_PATH}`
+    const response = await fetch(rawUrl, {
       cache: 'no-store',
       headers: {
-        'Authorization': `token ${config.token}`,
-        'Accept': 'application/vnd.github.v3+json',
         'Cache-Control': 'no-cache',
       },
     })
@@ -34,19 +33,33 @@ async function getProductsFromStorage(): Promise<any[]> {
         // File doesn't exist yet, return empty array
         return []
       }
+      // If raw URL fails (private repo), try API method
+      try {
+        const apiUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${PRODUCTS_FILE_PATH}?ref=${config.branch}`
+        const apiResponse = await fetch(apiUrl, {
+          headers: {
+            'Authorization': `token ${config.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        })
+        
+        if (apiResponse.ok) {
+          const apiData = await apiResponse.json()
+          if (apiData.content) {
+            const text = Buffer.from(apiData.content, 'base64').toString('utf-8')
+            const products = JSON.parse(text)
+            return Array.isArray(products) ? products : []
+          }
+        }
+      } catch (apiError) {
+        console.warn('API fallback failed:', apiError)
+      }
+      
       console.warn(`Failed to fetch products: ${response.statusText}`)
       return []
     }
 
-    const data = await response.json()
-    
-    // GitHub API returns base64 encoded content
-    if (!data.content) {
-      return []
-    }
-
-    // Decode base64 content
-    const text = Buffer.from(data.content, 'base64').toString('utf-8')
+    const text = await response.text()
     if (!text || text.trim() === '') {
       return []
     }

@@ -50,13 +50,11 @@ async function getShippingSettingsFromStorage(): Promise<{
       }
     }
 
-    // Use GitHub API for private repos
-    const apiUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${SHIPPING_SETTINGS_FILE_PATH}?ref=${config.branch}`
-    const response = await fetch(apiUrl, {
+    // For public repos, use raw.githubusercontent.com (faster)
+    const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${SHIPPING_SETTINGS_FILE_PATH}`
+    const response = await fetch(rawUrl, {
       cache: 'no-store',
       headers: {
-        'Authorization': `token ${config.token}`,
-        'Accept': 'application/vnd.github.v3+json',
         'Cache-Control': 'no-cache',
       },
     })
@@ -68,22 +66,40 @@ async function getShippingSettingsFromStorage(): Promise<{
           shippingCost: 200,
         }
       }
+      // Fallback to API for private repos
+      try {
+        const apiUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${SHIPPING_SETTINGS_FILE_PATH}?ref=${config.branch}`
+        const apiResponse = await fetch(apiUrl, {
+          headers: {
+            'Authorization': `token ${config.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        })
+        if (apiResponse.ok) {
+          const apiData = await apiResponse.json()
+          if (apiData.content) {
+            const text = Buffer.from(apiData.content, 'base64').toString('utf-8')
+            const data = JSON.parse(text)
+            const threshold = data.freeShippingThreshold !== undefined && data.freeShippingThreshold !== null
+              ? Number(data.freeShippingThreshold)
+              : 5000
+            const shippingCost = data.shippingCost !== undefined && data.shippingCost !== null
+              ? Number(data.shippingCost)
+              : 200
+            return {
+              freeShippingThreshold: threshold,
+              shippingCost: shippingCost,
+            }
+          }
+        }
+      } catch {}
       return {
         freeShippingThreshold: 5000,
         shippingCost: 200,
       }
     }
 
-    const apiData = await response.json()
-    if (!apiData.content) {
-      return {
-        freeShippingThreshold: 5000,
-        shippingCost: 200,
-      }
-    }
-
-    // Decode base64 content
-    const text = Buffer.from(apiData.content, 'base64').toString('utf-8')
+    const text = await response.text()
     if (!text || text.trim() === '') {
       return {
         freeShippingThreshold: 5000,
