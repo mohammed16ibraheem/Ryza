@@ -268,8 +268,20 @@ export async function DELETE(request: NextRequest) {
 
     console.log(`Deleted product ${productId} and ${deletedFiles.length} associated files from GitHub`)
 
+    // Verify the product is actually removed from the list
+    const verifyProducts = await getProductsFromStorage()
+    const productStillExists = verifyProducts.some((p: any) => p.id === productId)
+    if (productStillExists) {
+      console.error(`Product ${productId} still exists after deletion attempt`)
+      return NextResponse.json({ 
+        success: false,
+        error: 'Product deletion failed - product still exists in storage'
+      }, { status: 500 })
+    }
+
     return NextResponse.json({ 
-      success: true, 
+      success: true,
+      deletedFiles: deletedFiles.length,
       message: `Product and ${deletedFiles.length} associated files deleted permanently from GitHub`,
       deletedFilesCount: deletedFiles.length
     })

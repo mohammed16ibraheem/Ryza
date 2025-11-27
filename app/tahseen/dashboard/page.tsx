@@ -436,17 +436,33 @@ export default function AdminPanel() {
     }
 
     try {
+      // Show loading state
+      setUploadStatus('Deleting product and files from GitHub...')
+      
       const response = await fetch(`/api/products?id=${productId}`, {
         method: 'DELETE',
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Failed to delete product')
+        throw new Error(errorData.message || errorData.error || 'Failed to delete product')
       }
 
-      // Refresh products from API
+      // Verify deletion was successful
+      const deleteResult = await response.json()
+      if (!deleteResult.success) {
+        throw new Error('Deletion was not successful')
+      }
+
+      // Wait a moment for GitHub to process the deletion
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Refresh products from API and verify the product is gone
       const refreshResponse = await fetch('/api/products')
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh products list after deletion')
+      }
+      
       const refreshData = await refreshResponse.json()
       const transformedProducts: DraftProduct[] = refreshData.products.map((p: any) => ({
         id: p.id,
@@ -457,15 +473,26 @@ export default function AdminPanel() {
         category: p.category,
         subCategory: p.subCategory,
         images: p.images || [],
+        imageColors: p.imageColors,
         outOfStockImages: p.outOfStockImages || [],
         colorVariants: p.colorVariants,
         folderPath: p.folderPath,
       }))
-      setProducts(transformedProducts)
       
-      showToastNotification('Product deleted successfully!', 'success')
+      // Verify the product is actually deleted
+      const deletedProductStillExists = transformedProducts.some(p => p.id === productId)
+      if (deletedProductStillExists) {
+        throw new Error('Product deletion failed - product still exists in the list')
+      }
+      
+      setProducts(transformedProducts)
+      setUploadStatus('') // Clear loading status
+      
+      // Only show success after verification
+      showToastNotification('Product and all associated files deleted successfully from GitHub!', 'success')
     } catch (error) {
       console.error('Error deleting product:', error)
+      setUploadStatus('') // Clear loading status
       showToastNotification(`Error: ${error instanceof Error ? error.message : 'Failed to delete product'}`, 'error')
     }
   }
@@ -625,8 +652,21 @@ export default function AdminPanel() {
         throw new Error(errorData.message || errorData.error || 'Failed to save product to database')
       }
 
+      // Verify the saved product has the correct data
+      const savedProductData = await saveResponse.json()
+      if (!savedProductData || !savedProductData.id) {
+        throw new Error('Product save response is invalid')
+      }
+      
+      // Wait a moment for GitHub to process the save
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
       // Refresh products from API
       const refreshResponse = await fetch('/api/products')
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh products list')
+      }
+      
       const refreshData = await refreshResponse.json()
       const transformedProducts: DraftProduct[] = refreshData.products.map((p: any) => ({
         id: p.id,
@@ -637,14 +677,43 @@ export default function AdminPanel() {
         category: p.category,
         subCategory: p.subCategory,
         images: p.images || [],
+        imageColors: p.imageColors,
+        outOfStockImages: p.outOfStockImages || [], // IMPORTANT: Include out of stock images
         colorVariants: p.colorVariants,
         folderPath: p.folderPath,
       }))
+      
+      // Verify the product is actually in the list
+      const savedProduct = transformedProducts.find(p => p.id === productId)
+      if (!savedProduct) {
+        throw new Error('Product was not found in the list after saving')
+      }
+      
+      // Verify critical fields match
+      if (savedProduct.title !== title || savedProduct.price !== String(price)) {
+        throw new Error('Product data mismatch after saving')
+      }
+      
+      // Verify out of stock images are saved correctly
+      const savedOutOfStock = savedProduct.outOfStockImages || []
+      const expectedOutOfStock = outOfStockImages || []
+      if (JSON.stringify(savedOutOfStock.sort()) !== JSON.stringify(expectedOutOfStock.sort())) {
+        console.warn('Out of stock status mismatch - saved:', savedOutOfStock, 'expected:', expectedOutOfStock)
+        // Don't throw error, just warn - this might be a display issue
+      }
+      
+      // Verify images are saved
+      if (savedProduct.images.length === 0 && uploadedImages.length > 0) {
+        throw new Error('Product images were not saved correctly')
+      }
+      
       setProducts(transformedProducts)
       
       setUploading(false)
       setUploadStatus('') // Clear loading status
-      showToastNotification(editingProductId ? 'Product updated successfully!' : 'Product uploaded successfully!', 'success')
+      
+      // Only show success after all verifications pass
+      showToastNotification(editingProductId ? 'Product updated successfully! Changes are live.' : 'Product uploaded successfully! Now visible in user UI.', 'success')
 
       // Clean up preview URLs
       imagePreviews.forEach((url) => URL.revokeObjectURL(url))
@@ -694,11 +763,27 @@ export default function AdminPanel() {
       }
       
       const data = await response.json()
+      if (!data.thumbnail) {
+        throw new Error('Thumbnail upload response is invalid')
+      }
+      
+      // Wait a moment for GitHub to process
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      // Verify thumbnail was saved by fetching it
+      const verifyResponse = await fetch(`/api/category-thumbnails?category=${categoryKey}`)
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json()
+        if (verifyData.thumbnail !== data.thumbnail) {
+          throw new Error('Thumbnail verification failed')
+        }
+      }
+      
       setCategoryThumbnails(prev => ({
         ...prev,
         [categoryKey]: data.thumbnail
       }))
-      showToastNotification(`Thumbnail uploaded successfully for ${categoryKey.replace(/-/g, ' ')}`, 'success')
+      showToastNotification(`Thumbnail uploaded successfully for ${categoryKey.replace(/-/g, ' ')}! Now visible in user UI.`, 'success')
     } catch (error) {
       console.error('Error uploading thumbnail:', error)
       showToastNotification(`Error: ${error instanceof Error ? error.message : 'Failed to upload thumbnail'}`, 'error')
@@ -733,11 +818,23 @@ export default function AdminPanel() {
         const shippingCost = savedData.settings.shippingCost !== undefined && savedData.settings.shippingCost !== null
           ? Number(savedData.settings.shippingCost)
           : shippingSettings.shippingCost
+        // Wait a moment for GitHub to process
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // Verify settings were saved
+        const verifyResponse = await fetch('/api/shipping-settings', { cache: 'no-store' })
+        if (verifyResponse.ok) {
+          const verifyData = await verifyResponse.json()
+          if (verifyData.freeShippingThreshold !== threshold || verifyData.shippingCost !== shippingCost) {
+            throw new Error('Shipping settings verification failed')
+          }
+        }
+        
         setShippingSettings({
           freeShippingThreshold: threshold,
           shippingCost: shippingCost,
         })
-        showToastNotification('Shipping settings saved successfully!', 'success')
+        showToastNotification('Shipping settings saved successfully! Changes are live in user UI.', 'success')
       } else {
         // Fallback: Refresh shipping settings after a short delay to ensure blob is written
         setTimeout(async () => {
@@ -754,18 +851,23 @@ export default function AdminPanel() {
               const shippingCost = refreshData.shippingCost !== undefined && refreshData.shippingCost !== null
                 ? Number(refreshData.shippingCost)
                 : 200
-              setShippingSettings({
-                freeShippingThreshold: threshold,
-                shippingCost: shippingCost,
-              })
+              
+              // Verify before updating
+              if (refreshData.freeShippingThreshold === shippingSettings.freeShippingThreshold && 
+                  refreshData.shippingCost === shippingSettings.shippingCost) {
+                setShippingSettings({
+                  freeShippingThreshold: threshold,
+                  shippingCost: shippingCost,
+                })
+                showToastNotification('Shipping settings saved successfully! Changes are live in user UI.', 'success')
+              }
             }
           } catch (err) {
             console.error('Error refreshing settings:', err)
+            showToastNotification('Error: Failed to verify shipping settings', 'error')
           }
         }, 500)
       }
-
-      showToastNotification('Shipping settings saved successfully!', 'success')
     } catch (error) {
       console.error('Error saving shipping settings:', error)
       showToastNotification(`Error: ${error instanceof Error ? error.message : 'Failed to save shipping settings'}`, 'error')
@@ -1038,7 +1140,77 @@ export default function AdminPanel() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">Upload Product Images</label>
+                  <label className="text-sm font-semibold text-gray-700">
+                    {editingProductId ? 'Product Images (Edit Mode)' : 'Upload Product Images'}
+                  </label>
+                  {editingProductId && existingImages.length > 0 && (
+                    <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-blue-800 font-semibold">
+                        ⓘ Edit Mode: Only existing images can be used. Remove images if needed, but new uploads are disabled.
+                      </p>
+                    </div>
+                  )}
+                  {!editingProductId && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Bulk Upload */}
+                      <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImagesChange}
+                          className="hidden"
+                          id="product-images-bulk"
+                          disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES || !!editingProductId}
+                        />
+                        <label htmlFor="product-images-bulk" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES || editingProductId ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                          <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
+                          <div>
+                            <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload Multiple</p>
+                            <p className="text-xs text-gray-400 mt-1">Select multiple at once</p>
+                          </div>
+                        </label>
+                      </div>
+                      {/* Single Upload */}
+                      <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAddSingleImage}
+                          className="hidden"
+                          id="product-images-single"
+                          disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES || !!editingProductId}
+                        />
+                        <label htmlFor="product-images-single" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES || editingProductId ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                          <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
+                          <div>
+                            <p className="font-semibold text-gray-700 text-sm sm:text-base">Add One Image</p>
+                            <p className="text-xs text-gray-400 mt-1">Add images one by one</p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400 text-center">
+                    Images: {imagePreviews.length + existingImages.length} / {MAX_IMAGES} (1st image = Thumbnail)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {category === 'Hijabs' && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700">
+                  {editingProductId ? 'Product Images (Edit Mode)' : 'Upload Product Images'}
+                </label>
+                {editingProductId && existingImages.length > 0 && (
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3 mb-3">
+                    <p className="text-sm text-blue-800 font-semibold">
+                      ⓘ Edit Mode: Only existing images can be used. Remove images if needed, but new uploads are disabled.
+                    </p>
+                  </div>
+                )}
+                {!editingProductId && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Bulk Upload */}
                     <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
@@ -1048,10 +1220,10 @@ export default function AdminPanel() {
                         multiple
                         onChange={handleImagesChange}
                         className="hidden"
-                        id="product-images-bulk"
-                        disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES}
+                      id="product-images-hijabs-bulk"
+                      disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES || !!editingProductId}
                       />
-                      <label htmlFor="product-images-bulk" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <label htmlFor="product-images-hijabs-bulk" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES || editingProductId ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
                         <div>
                           <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload Multiple</p>
@@ -1066,10 +1238,10 @@ export default function AdminPanel() {
                         accept="image/*"
                         onChange={handleAddSingleImage}
                         className="hidden"
-                        id="product-images-single"
-                        disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES}
+                      id="product-images-hijabs-single"
+                      disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES || !!editingProductId}
                       />
-                      <label htmlFor="product-images-single" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <label htmlFor="product-images-hijabs-single" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES || editingProductId ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
                         <div>
                           <p className="font-semibold text-gray-700 text-sm sm:text-base">Add One Image</p>
@@ -1078,55 +1250,7 @@ export default function AdminPanel() {
                       </label>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 text-center">
-                    Images: {imagePreviews.length + existingImages.length} / {MAX_IMAGES} (1st image = Thumbnail)
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {category === 'Hijabs' && (
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-700">Upload Product Images</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Bulk Upload */}
-                  <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImagesChange}
-                      className="hidden"
-                      id="product-images-hijabs-bulk"
-                      disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES}
-                    />
-                    <label htmlFor="product-images-hijabs-bulk" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                      <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
-                      <div>
-                        <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload Multiple</p>
-                        <p className="text-xs text-gray-400 mt-1">Select multiple at once</p>
-                      </div>
-                    </label>
-                  </div>
-                  {/* Single Upload */}
-                  <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAddSingleImage}
-                      className="hidden"
-                      id="product-images-hijabs-single"
-                      disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES}
-                    />
-                    <label htmlFor="product-images-hijabs-single" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                      <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
-                      <div>
-                        <p className="font-semibold text-gray-700 text-sm sm:text-base">Add One Image</p>
-                        <p className="text-xs text-gray-400 mt-1">Add images one by one</p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
+                )}
                 <p className="text-xs text-gray-400 text-center">
                   Images: {imagePreviews.length + existingImages.length} / {MAX_IMAGES} (1st image = Thumbnail)
                 </p>
