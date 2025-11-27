@@ -43,10 +43,13 @@ async function fileToBase64(file: File | Blob): Promise<string> {
 
 /**
  * Get public URL for a file stored in GitHub
+ * For private repos, we use our API proxy
  */
 function getPublicUrl(path: string, config: GitHubConfig): string {
-  // Use raw.githubusercontent.com for direct file access
-  return `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${path}`
+  // Use our API proxy for private repositories
+  // This works for both public and private repos
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://theryza.com'
+  return `${siteUrl}/api/images/${path}`
 }
 
 /**
@@ -130,11 +133,13 @@ export async function uploadMultipleToGitHub(
   message?: string
 ): Promise<UploadResult[]> {
   const results: UploadResult[] = []
+  const baseTimestamp = Date.now()
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i]
     // Generate unique filename with proper extension
-    const timestamp = Date.now()
+    // Add small delay to each file to ensure unique timestamps and avoid rate limits
+    const timestamp = baseTimestamp + i
     let originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
     
     // Ensure file has an extension
@@ -153,6 +158,11 @@ export async function uploadMultipleToGitHub(
     try {
       const result = await uploadToGitHub(file, filePath, message)
       results.push(result)
+      
+      // Small delay between uploads to avoid GitHub API rate limits
+      if (i < files.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
     } catch (error) {
       console.error(`Error uploading ${file.name}:`, error)
       throw error
