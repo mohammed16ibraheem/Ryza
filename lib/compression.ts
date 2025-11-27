@@ -26,13 +26,30 @@ export async function compressImage(file: File): Promise<File> {
     
     const compressedFile = await imageCompression(file, imageCompressionOptions)
     
+    // Ensure the compressed file has the correct name and extension
+    // imageCompression might return a file without proper name
+    const originalName = file.name
+    const fileExtension = originalName.includes('.') 
+      ? originalName.substring(originalName.lastIndexOf('.')) 
+      : '.jpg' // Default to .jpg if no extension
+    
+    // Create a new File with the proper name
+    const namedFile = new File(
+      [compressedFile], 
+      originalName || `image${fileExtension}`,
+      { 
+        type: compressedFile.type || 'image/jpeg',
+        lastModified: Date.now()
+      }
+    )
+    
     const originalSize = (file.size / 1024).toFixed(2)
     const compressedSize = (compressedFile.size / 1024).toFixed(2)
     const reduction = ((1 - compressedFile.size / file.size) * 100).toFixed(1)
     
     console.log(`Compressed: ${originalSize} KB → ${compressedSize} KB (${reduction}% reduction)`)
     
-    return compressedFile
+    return namedFile
   } catch (error) {
     console.error('Image compression error:', error)
     // Return original file if compression fails

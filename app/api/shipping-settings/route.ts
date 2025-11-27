@@ -50,10 +50,13 @@ async function getShippingSettingsFromStorage(): Promise<{
       }
     }
 
-    const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${SHIPPING_SETTINGS_FILE_PATH}`
-    const response = await fetch(rawUrl, {
+    // Use GitHub API for private repos
+    const apiUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${SHIPPING_SETTINGS_FILE_PATH}?ref=${config.branch}`
+    const response = await fetch(apiUrl, {
       cache: 'no-store',
       headers: {
+        'Authorization': `token ${config.token}`,
+        'Accept': 'application/vnd.github.v3+json',
         'Cache-Control': 'no-cache',
       },
     })
@@ -71,7 +74,16 @@ async function getShippingSettingsFromStorage(): Promise<{
       }
     }
 
-    const text = await response.text()
+    const apiData = await response.json()
+    if (!apiData.content) {
+      return {
+        freeShippingThreshold: 5000,
+        shippingCost: 200,
+      }
+    }
+
+    // Decode base64 content
+    const text = Buffer.from(apiData.content, 'base64').toString('utf-8')
     if (!text || text.trim() === '') {
       return {
         freeShippingThreshold: 5000,

@@ -131,11 +131,24 @@ export async function uploadMultipleToGitHub(
 ): Promise<UploadResult[]> {
   const results: UploadResult[] = []
 
-  for (const file of files) {
-    // Generate unique filename
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    // Generate unique filename with proper extension
     const timestamp = Date.now()
-    const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-    const filePath = `${basePath}/${timestamp}_${originalName}`
+    let originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    
+    // Ensure file has an extension
+    if (!originalName.includes('.')) {
+      // If no extension, determine from file type
+      const extension = file.type.includes('jpeg') || file.type.includes('jpg') ? '.jpg' :
+                       file.type.includes('png') ? '.png' :
+                       file.type.includes('webp') ? '.webp' :
+                       file.type.includes('gif') ? '.gif' : '.jpg'
+      originalName = `image${i}${extension}`
+    }
+    
+    // Ensure unique filename for each file in the batch
+    const filePath = `${basePath}/${timestamp}_${i}_${originalName}`
 
     try {
       const result = await uploadToGitHub(file, filePath, message)

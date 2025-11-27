@@ -18,15 +18,26 @@ async function getThumbnailsFromStorage(): Promise<{ [key: string]: string }> {
       return {}
     }
 
-    const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${THUMBNAILS_FILE_PATH}`
-    const response = await fetch(rawUrl, { cache: 'no-store' })
+    // Use GitHub API for private repos
+    const apiUrl = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${THUMBNAILS_FILE_PATH}?ref=${config.branch}`
+    const response = await fetch(apiUrl, {
+      cache: 'no-store',
+      headers: {
+        'Authorization': `token ${config.token}`,
+        'Accept': 'application/vnd.github.v3+json',
+      },
+    })
 
     if (!response.ok) {
       if (response.status === 404) return {}
       return {}
     }
 
-    const text = await response.text()
+    const data = await response.json()
+    if (!data.content) return {}
+
+    // Decode base64 content
+    const text = Buffer.from(data.content, 'base64').toString('utf-8')
     if (!text || text.trim() === '') return {}
 
     return JSON.parse(text)
