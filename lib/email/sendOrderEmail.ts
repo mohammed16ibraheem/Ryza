@@ -101,13 +101,13 @@ export async function sendOrderConfirmationEmail(
       const itemTotal = itemPrice * itemQuantity
       
       // For email deliverability, use site domain for images
-      // If image is from Vercel Blob, we'll use it directly (Resend will handle it)
+      // If image is from GitHub, we'll use it directly (Resend will handle it)
       // For better deliverability, consider proxying images through your domain
       let imageUrl = item.image?.startsWith('http') 
         ? item.image 
         : `${siteUrl}${item.image?.startsWith('/') ? '' : '/'}${item.image || '/placeholder.jpg'}`
       
-      // Note: Vercel Blob URLs work but for best deliverability, 
+      // Note: GitHub raw URLs work but for best deliverability, 
       // consider using a CDN subdomain like cdn.theryza.com or images.theryza.com
 
       // Escape user input to prevent XSS

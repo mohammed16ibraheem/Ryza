@@ -791,7 +791,7 @@ export default function AdminPanel() {
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-500">
               <FiCheckCircle className="text-primary-600" />
-              <span>Files are uploaded to Vercel Blob storage and organized by category.</span>
+              <span>Files are uploaded to GitHub repository and organized by category.</span>
             </div>
           </div>
 

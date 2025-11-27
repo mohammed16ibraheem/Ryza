@@ -1,5 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { put } from '@vercel/blob'
+import { uploadMultipleToGitHub } from '@/lib/github-storage'
+
+// Map category names to folder names
+const getCategoryFolderName = (cat: string): string => {
+  const categoryMap: { [key: string]: string } = {
+    'Salah Essential': 'Salah-Essential',
+    'Hijabs': 'Hijabs',
+    'Gift Hampers': 'Gift-Hampers',
+    'Hair Essentials': 'Hair-Essentials',
+    'Hair Accessories': 'Hair-Essentials',
+    'Jewellery': 'Jewellery',
+    'Offers': 'Offers',
+    'Dresses': 'Salah-Essential',
+  }
+  return categoryMap[cat] || cat.replace(/\s+/g, '-')
+}
+
+// Map Hijab sub-category to folder name
+const getHijabSubCategoryFolderName = (subCat: string): string => {
+  const subCategoryMap: { [key: string]: string } = {
+    'Hijab': 'Hijab',
+    'Accessory': 'Hijab-Essentials',
+    'Luxury': 'Luxury-Hijabs',
+    'Day to Day Life': 'Day-to-Day-Life',
+  }
+  return subCategoryMap[subCat] || subCat.replace(/\s+/g, '-')
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,75 +43,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Category is required' }, { status: 400 })
     }
 
-    // Check for Blob token
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Blob storage not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.' },
-        { status: 500 }
-      )
-    }
-
-    // Map category names to folder names
-    const getCategoryFolderName = (cat: string): string => {
-      const categoryMap: { [key: string]: string } = {
-        'Salah Essential': 'Salah-Essential',
-        'Hijabs': 'Hijabs',
-        'Gift Hampers': 'Gift-Hampers',
-        'Hair Essentials': 'Hair-Essentials',
-        'Hair Accessories': 'Hair-Essentials',
-        'Jewellery': 'Jewellery',
-        'Offers': 'Offers',
-        'Dresses': 'Salah-Essential',
-      }
-      return categoryMap[cat] || cat.replace(/\s+/g, '-')
-    }
-
-    // Map Hijab sub-category to folder name
-    const getHijabSubCategoryFolderName = (subCat: string): string => {
-      const subCategoryMap: { [key: string]: string } = {
-        'Hijab': 'Hijab',
-        'Accessory': 'Hijab-Essentials',
-        'Luxury': 'Luxury-Hijabs',
-        'Day to Day Life': 'Day-to-Day-Life',
-      }
-      return subCategoryMap[subCat] || subCat.replace(/\s+/g, '-')
-    }
-
-    // Generate folder path for Blob storage
+    // Generate folder path for GitHub storage
     const categoryFolder = getCategoryFolderName(category)
-    let blobPath = `images/${categoryFolder}`
+    let basePath = `public/images/${categoryFolder}`
     
     if (category === 'Hijabs' && subCategory) {
       const subFolder = getHijabSubCategoryFolderName(subCategory)
-      blobPath = `${blobPath}/${subFolder}`
+      basePath = `${basePath}/${subFolder}`
     }
 
-    const uploadedFiles: string[] = []
+    // Upload files to GitHub
+    const results = await uploadMultipleToGitHub(
+      files,
+      basePath,
+      `Upload product images for ${productId}`
+    )
 
-    // Upload each file to Vercel Blob
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      
-      // Generate unique filename
-      const timestamp = Date.now()
-      const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-      const fileName = `${productId}_${timestamp}_${i}_${originalName}`
-      const fullPath = `${blobPath}/${fileName}`
-
-      // Upload to Vercel Blob
-      const blob = await put(fullPath, file, {
-        access: 'public',
-        token,
-      })
-
-      uploadedFiles.push(blob.url)
-    }
+    const uploadedFiles = results.map(r => r.url)
+    const folderPath = basePath.replace('public/', '')
 
     return NextResponse.json({
       success: true,
       files: uploadedFiles,
-      folderPath: blobPath,
+      folderPath: folderPath,
     })
   } catch (error) {
     console.error('Upload error:', error)

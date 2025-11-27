@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { put, del, list } from '@vercel/blob'
 import { cookies } from 'next/headers'
 import { jwtVerify } from 'jose'
 
 // Force dynamic rendering - POST route uses cookies for authentication
 export const dynamic = 'force-dynamic'
 
-const SHIPPING_SETTINGS_BLOB_PATH = 'data/shipping-settings.json'
 const SECRET_KEY = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'your-secret-key-change-this-in-production'
 )
@@ -28,37 +26,32 @@ async function verifyAdmin(): Promise<boolean> {
   }
 }
 
-// Helper function to get shipping settings from Blob storage
-async function getShippingSettingsFromBlob(): Promise<{
+import { uploadToGitHub } from '@/lib/github-storage'
+
+const SHIPPING_SETTINGS_FILE_PATH = 'public/data/shipping-settings.json'
+
+// Helper function to get shipping settings from GitHub
+async function getShippingSettingsFromStorage(): Promise<{
   freeShippingThreshold: number
   shippingCost: number
 }> {
   try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
+    const config = {
+      token: process.env.GITHUB_TOKEN,
+      owner: process.env.GITHUB_REPO_OWNER,
+      repo: process.env.GITHUB_REPO_NAME,
+      branch: process.env.GITHUB_BRANCH || 'main',
+    }
+
+    if (!config.token || !config.owner || !config.repo) {
       return {
         freeShippingThreshold: 5000,
         shippingCost: 200,
       }
     }
 
-    const blobs = await list({
-      prefix: SHIPPING_SETTINGS_BLOB_PATH,
-      token,
-      limit: 1,
-    })
-
-    if (blobs.blobs.length === 0) {
-      return {
-        freeShippingThreshold: 5000,
-        shippingCost: 200,
-      }
-    }
-
-    const blobUrl = blobs.blobs[0].url
-    // Add cache-busting query parameter to ensure fresh data
-    const cacheBuster = `?t=${Date.now()}`
-    const response = await fetch(`${blobUrl}${cacheBuster}`, {
+    const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${SHIPPING_SETTINGS_FILE_PATH}`
+    const response = await fetch(rawUrl, {
       cache: 'no-store',
       headers: {
         'Cache-Control': 'no-cache',
@@ -66,6 +59,12 @@ async function getShippingSettingsFromBlob(): Promise<{
     })
 
     if (!response.ok) {
+      if (response.status === 404) {
+        return {
+          freeShippingThreshold: 5000,
+          shippingCost: 200,
+        }
+      }
       return {
         freeShippingThreshold: 5000,
         shippingCost: 200,
@@ -81,8 +80,6 @@ async function getShippingSettingsFromBlob(): Promise<{
     }
 
     const data = JSON.parse(text)
-    // Handle legacy data format
-    // IMPORTANT: Check for undefined/null, not falsy (0 is valid!)
     const threshold = data.freeShippingThreshold !== undefined && data.freeShippingThreshold !== null
       ? Number(data.freeShippingThreshold)
       : 5000
@@ -94,13 +91,7 @@ async function getShippingSettingsFromBlob(): Promise<{
       shippingCost: shippingCost,
     }
   } catch (error: any) {
-    if (error.status === 404 || error.code === 'ENOENT' || error.message?.includes('not found')) {
-      return {
-        freeShippingThreshold: 5000,
-        shippingCost: 200,
-      }
-    }
-    console.error('Error reading shipping settings from Blob:', error)
+    console.error('Error reading shipping settings from GitHub:', error)
     return {
       freeShippingThreshold: 5000,
       shippingCost: 200,
@@ -108,48 +99,35 @@ async function getShippingSettingsFromBlob(): Promise<{
   }
 }
 
-// Helper function to save shipping settings to Blob storage
-async function saveShippingSettingsToBlob(settings: {
+// Helper function to save shipping settings to GitHub
+async function saveShippingSettingsToStorage(settings: {
   freeShippingThreshold: number
   shippingCost: number
 }): Promise<void> {
-  try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      throw new Error('BLOB_READ_WRITE_TOKEN not configured')
-    }
-
-    const jsonContent = JSON.stringify(settings, null, 2)
-    const blob = new Blob([jsonContent], { type: 'application/json' })
-
-    try {
-      const existingBlobs = await list({
-        prefix: SHIPPING_SETTINGS_BLOB_PATH,
-        token,
-        limit: 1,
-      })
-
-      if (existingBlobs.blobs.length > 0) {
-        await del(existingBlobs.blobs[0].url, { token })
-      }
-    } catch (error) {
-      console.warn('Could not delete existing shipping settings blob:', error)
-    }
-
-    await put(SHIPPING_SETTINGS_BLOB_PATH, blob, {
-      access: 'public',
-      token,
-      addRandomSuffix: false,
-    })
-  } catch (error) {
-    console.error('Error saving shipping settings to Blob:', error)
-    throw error
+  const config = {
+    token: process.env.GITHUB_TOKEN,
+    owner: process.env.GITHUB_REPO_OWNER,
+    repo: process.env.GITHUB_REPO_NAME,
+    branch: process.env.GITHUB_BRANCH || 'main',
   }
+
+  if (!config.token || !config.owner || !config.repo) {
+    throw new Error('GitHub storage not configured')
+  }
+
+  const jsonContent = JSON.stringify(settings, null, 2)
+  const blob = new Blob([jsonContent], { type: 'application/json' })
+  
+  await uploadToGitHub(
+    blob,
+    SHIPPING_SETTINGS_FILE_PATH,
+    `Update shipping settings - ${new Date().toISOString()}`
+  )
 }
 
 export async function GET() {
   try {
-    const settings = await getShippingSettingsFromBlob()
+    const settings = await getShippingSettingsFromStorage()
     // Add cache headers to prevent caching of API response
     return NextResponse.json(settings, {
       headers: {
@@ -205,7 +183,7 @@ export async function POST(request: NextRequest) {
       shippingCost: Math.round(shippingCost * 100) / 100,
     }
 
-    await saveShippingSettingsToBlob(settings)
+    await saveShippingSettingsToStorage(settings)
 
     // Return saved settings with no-cache headers
     return NextResponse.json(
@@ -222,10 +200,10 @@ export async function POST(request: NextRequest) {
     console.error('Error saving shipping settings:', error)
     return NextResponse.json(
       {
-        error: 'Failed to save shipping settings',
+        error: 'Failed to save shipping settings - storage service not configured',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
+      { status: 503 }
     )
   }
 }

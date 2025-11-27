@@ -1,49 +1,13 @@
 import { Metadata } from 'next'
-import { list } from '@vercel/blob'
 
 // Force dynamic rendering for product pages to prevent build timeouts
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-const PRODUCTS_BLOB_PATH = 'data/products.json'
-
-// Helper function to get products from Blob storage (same as API route)
-async function getProductsFromBlob(): Promise<any[]> {
-  try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      return []
-    }
-
-    const blobs = await list({ 
-      prefix: PRODUCTS_BLOB_PATH,
-      token,
-      limit: 1
-    })
-
-    if (blobs.blobs.length === 0) {
-      return []
-    }
-
-    const blobUrl = blobs.blobs[0].url
-    const response = await fetch(blobUrl)
-    
-    if (!response.ok) {
-      return []
-    }
-
-    const text = await response.text()
-    if (!text || text.trim() === '') {
-      return []
-    }
-
-    return JSON.parse(text)
-  } catch (error: any) {
-    if (error.status === 404 || error.code === 'ENOENT' || error.message?.includes('not found')) {
-      return []
-    }
-    return []
-  }
+// Helper function to get products (storage removed)
+async function getProductsFromStorage(): Promise<any[]> {
+  // Storage service removed - return empty array
+  return []
 }
 
 export async function generateMetadata({ params }: { params: { category: string; id: string } }): Promise<Metadata> {
@@ -56,7 +20,7 @@ export async function generateMetadata({ params }: { params: { category: string;
       setTimeout(() => reject(new Error('Metadata generation timeout')), 5000) // 5 second timeout
     )
     
-    const productsPromise = getProductsFromBlob()
+    const productsPromise = getProductsFromStorage()
     const products = await Promise.race([productsPromise, timeoutPromise]) as any[]
     
     const categoryMap: { [key: string]: string } = {

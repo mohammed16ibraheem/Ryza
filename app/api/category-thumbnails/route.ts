@@ -1,99 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server'
 import path from 'path'
-import { put, del, list } from '@vercel/blob'
+import { uploadToGitHub, deleteFromGitHub } from '@/lib/github-storage'
 
-const THUMBNAILS_BLOB_PATH = 'data/category-thumbnails.json'
+const THUMBNAILS_FILE_PATH = 'public/data/category-thumbnails.json'
 
-// Helper function to get thumbnails from Blob storage
-async function getThumbnailsFromBlob(): Promise<{ [key: string]: string }> {
+// Helper function to get thumbnails from GitHub
+async function getThumbnailsFromStorage(): Promise<{ [key: string]: string }> {
   try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      // BLOB_READ_WRITE_TOKEN not set - expected in local dev, must be set in production
+    const config = {
+      token: process.env.GITHUB_TOKEN,
+      owner: process.env.GITHUB_REPO_OWNER,
+      repo: process.env.GITHUB_REPO_NAME,
+      branch: process.env.GITHUB_BRANCH || 'main',
+    }
+
+    if (!config.token || !config.owner || !config.repo) {
       return {}
     }
 
-    // Try to find the blob by listing with prefix
-    const blobs = await list({ 
-      prefix: THUMBNAILS_BLOB_PATH,
-      token,
-      limit: 1
-    })
+    const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${THUMBNAILS_FILE_PATH}`
+    const response = await fetch(rawUrl, { cache: 'no-store' })
 
-    if (blobs.blobs.length === 0) {
-      // Blob doesn't exist yet, return empty object
-      return {}
-    }
-
-    // Fetch the blob content using the URL
-    const blobUrl = blobs.blobs[0].url
-    const response = await fetch(blobUrl)
-    
     if (!response.ok) {
-      console.warn(`Failed to fetch thumbnails blob: ${response.statusText}`)
+      if (response.status === 404) return {}
       return {}
     }
 
     const text = await response.text()
-    if (!text || text.trim() === '') {
-      return {}
-    }
+    if (!text || text.trim() === '') return {}
 
     return JSON.parse(text)
-  } catch (error: any) {
-    // If blob doesn't exist (404), return empty object
-    if (error.status === 404 || error.code === 'ENOENT' || error.message?.includes('not found')) {
-      return {}
-    }
-    console.error('Error reading thumbnails from Blob:', error)
+  } catch (error) {
+    console.error('Error reading thumbnails from GitHub:', error)
     return {}
   }
 }
 
-// Helper function to save thumbnails to Blob storage
-async function saveThumbnailsToBlob(thumbnails: { [key: string]: string }): Promise<void> {
-  try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      throw new Error('BLOB_READ_WRITE_TOKEN not configured')
-    }
-
-    const jsonContent = JSON.stringify(thumbnails, null, 2)
-    const blob = new Blob([jsonContent], { type: 'application/json' })
-
-    // Check if blob already exists and delete it first (to update)
-    try {
-      const existingBlobs = await list({ 
-        prefix: THUMBNAILS_BLOB_PATH,
-        token,
-        limit: 1
-      })
-      
-      if (existingBlobs.blobs.length > 0) {
-        // Delete old blob before creating new one
-        await del(existingBlobs.blobs[0].url, { token })
-      }
-    } catch (error) {
-      // Ignore errors when trying to delete (blob might not exist)
-      console.warn('Could not delete existing thumbnails blob:', error)
-    }
-
-    // Create/update the blob
-    await put(THUMBNAILS_BLOB_PATH, blob, {
-      access: 'public',
-      token,
-      addRandomSuffix: false, // Keep same path for updates
-    })
-  } catch (error) {
-    console.error('Error saving thumbnails to Blob:', error)
-    throw error
+// Helper function to save thumbnails to GitHub
+async function saveThumbnailsToStorage(thumbnails: { [key: string]: string }): Promise<void> {
+  const config = {
+    token: process.env.GITHUB_TOKEN,
+    owner: process.env.GITHUB_REPO_OWNER,
+    repo: process.env.GITHUB_REPO_NAME,
+    branch: process.env.GITHUB_BRANCH || 'main',
   }
+
+  if (!config.token || !config.owner || !config.repo) {
+    throw new Error('GitHub storage not configured')
+  }
+
+  const jsonContent = JSON.stringify(thumbnails, null, 2)
+  const blob = new Blob([jsonContent], { type: 'application/json' })
+  
+  await uploadToGitHub(
+    blob,
+    THUMBNAILS_FILE_PATH,
+    `Update category thumbnails - ${new Date().toISOString()}`
+  )
 }
 
 // GET - Fetch all category thumbnails
 export async function GET() {
   try {
-    const thumbnails = await getThumbnailsFromBlob()
+    const thumbnails = await getThumbnailsFromStorage()
     return NextResponse.json({ thumbnails })
   } catch (error) {
     console.error('Error fetching thumbnails:', error)
@@ -112,15 +81,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Category and file are required' }, { status: 400 })
     }
 
-    // Check for Blob token
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Blob storage not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.' },
-        { status: 500 }
-      )
-    }
-
     // Validate category
     const validCategories = [
       'salah-essential',
@@ -135,43 +95,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     }
 
-    // Generate unique filename
+    // Upload thumbnail image to GitHub
     const timestamp = Date.now()
     const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
     const fileExtension = path.extname(originalName)
     const baseName = path.basename(originalName, fileExtension)
     const fileName = `${category}_${timestamp}_${baseName}${fileExtension}`
-    const blobPath = `images/category-thumbnails/${fileName}`
+    const imagePath = `public/images/category-thumbnails/${fileName}`
 
-    // Upload to Vercel Blob
-    const blob = await put(blobPath, file, {
-      access: 'public',
-      token,
-    })
+    // Upload image to GitHub
+    const uploadResult = await uploadToGitHub(
+      file,
+      imagePath,
+      `Upload category thumbnail for ${category}`
+    )
 
-    // Read existing database from Blob
-    const thumbnails = await getThumbnailsFromBlob()
+    // Read existing thumbnails
+    const thumbnails = await getThumbnailsFromStorage()
     
-    // Delete old thumbnail from Blob if exists (to save space)
+    // Delete old thumbnail from GitHub if exists
     if (thumbnails[category]) {
       try {
+        // Extract path from URL
         const oldUrl = thumbnails[category]
-        await del(oldUrl, { token })
+        const urlParts = oldUrl.split('/')
+        const oldPath = urlParts.slice(urlParts.indexOf('public')).join('/')
+        await deleteFromGitHub(oldPath, `Delete old thumbnail for ${category}`)
       } catch (err) {
-        // Ignore errors when deleting old file
-        console.warn('Could not delete old thumbnail from Blob:', err)
+        console.warn('Could not delete old thumbnail:', err)
       }
     }
     
-    // Update database with new thumbnail URL
-    thumbnails[category] = blob.url
+    // Update thumbnails database
+    thumbnails[category] = uploadResult.url
     
-    // Save to database (Blob storage)
-    await saveThumbnailsToBlob(thumbnails)
+    // Save thumbnails database to GitHub
+    await saveThumbnailsToStorage(thumbnails)
 
     return NextResponse.json({
       success: true,
-      thumbnail: blob.url,
+      thumbnail: uploadResult.url,
       category
     })
   } catch (error) {
@@ -193,15 +156,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Category is required' }, { status: 400 })
     }
 
-    // Check for Blob token
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Blob storage not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.' },
-        { status: 500 }
-      )
-    }
-
     // Validate category
     const validCategories = [
       'salah-essential',
@@ -216,24 +170,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
     }
 
-    // Read database from Blob
-    const thumbnails = await getThumbnailsFromBlob()
+    // Read database
+    const thumbnails = await getThumbnailsFromStorage()
 
     if (!thumbnails[category]) {
       return NextResponse.json({ error: 'Thumbnail not found for this category' }, { status: 404 })
     }
 
-    // Delete from Vercel Blob
-    try {
-      await del(thumbnails[category], { token })
-    } catch (err) {
-      console.warn('Could not delete thumbnail from Blob:', err)
-      // Continue with database deletion even if Blob deletion fails
-    }
-
     // Remove from database
     delete thumbnails[category]
-    await saveThumbnailsToBlob(thumbnails)
+    await saveThumbnailsToStorage(thumbnails)
 
     return NextResponse.json({
       success: true,
@@ -242,8 +188,8 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error('Error deleting thumbnail:', error)
     return NextResponse.json(
-      { error: 'Failed to delete thumbnail', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { error: 'Failed to delete thumbnail - storage service not configured', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 503 }
     )
   }
 }

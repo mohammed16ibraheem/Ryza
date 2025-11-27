@@ -4,16 +4,16 @@ const nextConfig = {
   // Increase static page generation timeout to prevent build failures
   staticPageGenerationTimeout: 120, // 120 seconds (default is 60)
   images: {
-    // Allow images from Vercel Blob storage
+    // Allow images from GitHub raw content
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*.public.blob.vercel-storage.com',
+        hostname: 'raw.githubusercontent.com',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: '*.blob.vercel-storage.com',
+        hostname: 'github.com',
         pathname: '/**',
       },
     ],

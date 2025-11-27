@@ -1,46 +1,11 @@
 import { MetadataRoute } from 'next'
-import { list } from '@vercel/blob'
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://theryza.com'
-const PRODUCTS_BLOB_PATH = 'data/products.json'
 
-// Helper function to get products from Blob storage (same as API route)
-async function getProductsFromBlob(): Promise<any[]> {
-  try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      return []
-    }
-
-    const blobs = await list({ 
-      prefix: PRODUCTS_BLOB_PATH,
-      token,
-      limit: 1
-    })
-
-    if (blobs.blobs.length === 0) {
-      return []
-    }
-
-    const blobUrl = blobs.blobs[0].url
-    const response = await fetch(blobUrl)
-    
-    if (!response.ok) {
-      return []
-    }
-
-    const text = await response.text()
-    if (!text || text.trim() === '') {
-      return []
-    }
-
-    return JSON.parse(text)
-  } catch (error: any) {
-    if (error.status === 404 || error.code === 'ENOENT' || error.message?.includes('not found')) {
-      return []
-    }
-    return []
-  }
+// Helper function to get products (storage removed)
+async function getProductsFromStorage(): Promise<any[]> {
+  // Storage service removed - return empty array
+  return []
 }
 
 // Add timeout handling to prevent build failures
@@ -89,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       setTimeout(() => reject(new Error('Sitemap generation timeout')), 10000) // 10 second timeout
     )
     
-    const productsPromise = getProductsFromBlob()
+    const productsPromise = getProductsFromStorage()
     const products = await Promise.race([productsPromise, timeoutPromise]) as any[]
 
     if (!products || products.length === 0) {

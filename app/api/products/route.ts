@@ -1,35 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { del, put, list } from '@vercel/blob'
+import { uploadToGitHub, deleteFromGitHub } from '@/lib/github-storage'
 
-const PRODUCTS_BLOB_PATH = 'data/products.json'
+const PRODUCTS_FILE_PATH = 'public/data/products.json'
 
-// Helper function to get products from Blob storage
-async function getProductsFromBlob(): Promise<any[]> {
+// Helper function to get products from GitHub
+async function getProductsFromStorage(): Promise<any[]> {
   try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      // BLOB_READ_WRITE_TOKEN not set - expected in local dev, must be set in production
+    const config = {
+      token: process.env.GITHUB_TOKEN,
+      owner: process.env.GITHUB_REPO_OWNER,
+      repo: process.env.GITHUB_REPO_NAME,
+      branch: process.env.GITHUB_BRANCH || 'main',
+    }
+
+    if (!config.token || !config.owner || !config.repo) {
+      console.warn('GitHub storage not configured - returning empty products')
       return []
     }
 
-    // Try to find the blob by listing with prefix
-    const blobs = await list({ 
-      prefix: PRODUCTS_BLOB_PATH,
-      token,
-      limit: 1
+    // Fetch products.json from GitHub raw content
+    const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${config.branch}/${PRODUCTS_FILE_PATH}`
+    const response = await fetch(rawUrl, {
+      cache: 'no-store', // Always fetch fresh data
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
     })
 
-    if (blobs.blobs.length === 0) {
-      // Blob doesn't exist yet, return empty array
-      return []
-    }
-
-    // Fetch the blob content using the URL
-    const blobUrl = blobs.blobs[0].url
-    const response = await fetch(blobUrl)
-    
     if (!response.ok) {
-      console.warn(`Failed to fetch products blob: ${response.statusText}`)
+      if (response.status === 404) {
+        // File doesn't exist yet, return empty array
+        return []
+      }
+      console.warn(`Failed to fetch products: ${response.statusText}`)
       return []
     }
 
@@ -38,67 +41,51 @@ async function getProductsFromBlob(): Promise<any[]> {
       return []
     }
 
-    return JSON.parse(text)
+    const products = JSON.parse(text)
+    return Array.isArray(products) ? products : []
   } catch (error: any) {
-    // If blob doesn't exist (404), return empty array
-    if (error.status === 404 || error.code === 'ENOENT' || error.message?.includes('not found')) {
+    if (error.message?.includes('JSON') || error.message?.includes('parse')) {
+      console.error('Error parsing products JSON:', error)
       return []
     }
-    console.error('Error reading products from Blob:', error)
-    // Return empty array on error to prevent crashes
+    console.error('Error reading products from GitHub:', error)
     return []
   }
 }
 
-// Helper function to save products to Blob storage
-async function saveProductsToBlob(products: any[]): Promise<void> {
-  try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN
-    if (!token) {
-      throw new Error('BLOB_READ_WRITE_TOKEN not configured')
-    }
-
-    const jsonContent = JSON.stringify(products, null, 2)
-    const blob = new Blob([jsonContent], { type: 'application/json' })
-
-    // Check if blob already exists and delete it first (to update)
-    try {
-      const existingBlobs = await list({ 
-        prefix: PRODUCTS_BLOB_PATH,
-        token,
-        limit: 1
-      })
-      
-      if (existingBlobs.blobs.length > 0) {
-        // Delete old blob before creating new one
-        await del(existingBlobs.blobs[0].url, { token })
-      }
-    } catch (error) {
-      // Ignore errors when trying to delete (blob might not exist)
-      console.warn('Could not delete existing products blob:', error)
-    }
-
-    // Create/update the blob
-    await put(PRODUCTS_BLOB_PATH, blob, {
-      access: 'public',
-      token,
-      addRandomSuffix: false, // Keep same path for updates
-    })
-  } catch (error) {
-    console.error('Error saving products to Blob:', error)
-    throw error
+// Helper function to save products to GitHub
+async function saveProductsToStorage(products: any[]): Promise<void> {
+  const config = {
+    token: process.env.GITHUB_TOKEN,
+    owner: process.env.GITHUB_REPO_OWNER,
+    repo: process.env.GITHUB_REPO_NAME,
+    branch: process.env.GITHUB_BRANCH || 'main',
   }
-}
 
-// Check if URL is a Vercel Blob URL
-function isBlobUrl(url: string): boolean {
-  return url.includes('blob.vercel-storage.com') || url.includes('public.blob.vercel-storage.com')
+  if (!config.token || !config.owner || !config.repo) {
+    throw new Error('GitHub storage not configured. Please set GITHUB_TOKEN, GITHUB_REPO_OWNER, and GITHUB_REPO_NAME environment variables.')
+  }
+
+  // Convert products array to JSON string
+  const jsonContent = JSON.stringify(products, null, 2)
+  
+  // Create a Blob from the JSON string
+  const blob = new Blob([jsonContent], { type: 'application/json' })
+  
+  // Upload to GitHub using the uploadToGitHub function
+  // We need to convert the blob to a format that can be uploaded
+  // Since uploadToGitHub expects File | Blob, we can pass the blob directly
+  await uploadToGitHub(
+    blob,
+    PRODUCTS_FILE_PATH,
+    `Update products database - ${new Date().toISOString()}`
+  )
 }
 
 // GET - Fetch all products or filter by category
 export async function GET(request: NextRequest) {
   try {
-    const products = await getProductsFromBlob()
+    const products = await getProductsFromStorage()
 
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
@@ -107,7 +94,7 @@ export async function GET(request: NextRequest) {
       // Map URL category to database category
       const categoryMap: { [key: string]: string } = {
         'salah-essential': 'Salah Essential',
-        'dresses': 'Salah Essential', // Legacy support - map old "dresses" URL to "Salah Essential"
+        'dresses': 'Salah Essential',
         'hijabs': 'Hijabs',
         'gift-hampers': 'Gift Hampers',
         'hair-accessories': 'Hair Essentials',
@@ -116,7 +103,6 @@ export async function GET(request: NextRequest) {
         'offers': 'Offers',
       }
       
-      // Decode category if it's URL encoded
       const decodedCategory = decodeURIComponent(category)
       const dbCategory = categoryMap[decodedCategory] || decodedCategory
       
@@ -138,7 +124,7 @@ export async function POST(request: NextRequest) {
   try {
     const product = await request.json()
 
-    const products = await getProductsFromBlob()
+    const products = await getProductsFromStorage()
 
     // Check if updating existing product
     const existingIndex = products.findIndex((p: any) => p.id === product.id)
@@ -149,14 +135,14 @@ export async function POST(request: NextRequest) {
       products.push(product)
     }
 
-    await saveProductsToBlob(products)
+    await saveProductsToStorage(products)
 
     return NextResponse.json({ success: true, product })
   } catch (error) {
     console.error('Error saving product:', error)
     return NextResponse.json(
-      { error: 'Failed to save product', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { error: 'Failed to save product - storage service not configured', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 503 }
     )
   }
 }
@@ -171,7 +157,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 })
     }
 
-    const products = await getProductsFromBlob()
+    const products = await getProductsFromStorage()
     
     if (products.length === 0) {
       return NextResponse.json({ error: 'No products found' }, { status: 404 })
@@ -183,74 +169,19 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
-    const product = products[productIndex]
-    
-    // Delete all associated files from Vercel Blob
-    try {
-      const token = process.env.BLOB_READ_WRITE_TOKEN
-      const deletedFiles: string[] = []
-
-      // Delete product images from Blob
-      if (product.images && Array.isArray(product.images)) {
-        for (const imageUrl of product.images) {
-          if (imageUrl && typeof imageUrl === 'string' && isBlobUrl(imageUrl)) {
-            try {
-              await del(imageUrl, { token })
-              deletedFiles.push(imageUrl)
-            } catch (err) {
-              console.error(`Error deleting image from Blob ${imageUrl}:`, err)
-            }
-          }
-        }
-      }
-
-      // Delete product video from Blob
-      if (product.video && typeof product.video === 'string' && isBlobUrl(product.video)) {
-        try {
-          await del(product.video, { token })
-          deletedFiles.push(product.video)
-        } catch (err) {
-          console.error(`Error deleting video from Blob ${product.video}:`, err)
-        }
-      }
-
-      // Delete color variant images from Blob
-      if (product.colorVariants && Array.isArray(product.colorVariants)) {
-        for (const variant of product.colorVariants) {
-          if (variant.images && Array.isArray(variant.images)) {
-            for (const imageUrl of variant.images) {
-              if (imageUrl && typeof imageUrl === 'string' && isBlobUrl(imageUrl)) {
-                try {
-                  await del(imageUrl, { token })
-                  deletedFiles.push(imageUrl)
-                } catch (err) {
-                  console.error(`Error deleting color variant image from Blob ${imageUrl}:`, err)
-                }
-              }
-            }
-          }
-        }
-      }
-
-      console.log(`Deleted ${deletedFiles.length} files from Blob for product ${productId}`)
-    } catch (fileError) {
-      console.error('Error deleting product files from Blob:', fileError)
-      // Continue with database deletion even if file deletion fails
-    }
-
     // Delete from database
     products.splice(productIndex, 1)
-    await saveProductsToBlob(products)
+    await saveProductsToStorage(products)
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Product and associated files deleted successfully' 
+      message: 'Product deleted successfully' 
     })
   } catch (error) {
     console.error('Error deleting product:', error)
     return NextResponse.json(
-      { error: 'Failed to delete product', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
+      { error: 'Failed to delete product - storage service not configured', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 503 }
     )
   }
 }

@@ -311,45 +311,9 @@ export default function CheckoutPage() {
         cart: cart,
       }))
 
-      // Load Cashfree SDK and redirect to checkout
-      // Check if script already exists
-      let cashfreeScript: HTMLScriptElement | null = document.querySelector('script[src="https://sdk.cashfree.com/js/v3/cashfree.js"]') as HTMLScriptElement | null
-      
-      if (!cashfreeScript) {
-        cashfreeScript = document.createElement('script')
-        cashfreeScript.src = 'https://sdk.cashfree.com/js/v3/cashfree.js'
-        cashfreeScript.async = true
-        document.body.appendChild(cashfreeScript)
-      }
-
-      // Wait for SDK to load
-      const initCheckout = () => {
-        // @ts-ignore - Cashfree SDK is loaded dynamically
-        if (typeof Cashfree !== 'undefined') {
-          // @ts-ignore - Cashfree SDK is loaded dynamically
-          const cashfree = Cashfree({
-            mode: 'production',
-          })
-
-          cashfree.checkout({
-            paymentSessionId: data.payment_session_id,
-            redirectTarget: '_self',
-          })
-        } else {
-          // Retry after a short delay
-          setTimeout(initCheckout, 100)
-        }
-      }
-
-      if (cashfreeScript.getAttribute('data-loaded') === 'true') {
-        initCheckout()
-      } else {
-        cashfreeScript.addEventListener('load', () => {
-          cashfreeScript?.setAttribute('data-loaded', 'true')
-          initCheckout()
-        })
-        initCheckout() // Try immediately in case it's already loaded
-      }
+      // Payment service removed - show error message
+      alert('Payment service is not configured. Please contact support.')
+      setIsProcessingPayment(false)
     } catch (error: any) {
       console.error('Payment error:', error)
       alert(`Payment failed: ${error.message || 'Something went wrong. Please try again.'}`)

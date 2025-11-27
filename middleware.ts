@@ -5,8 +5,7 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next()
 
   // Add cache headers for image and video files
-  // Note: Vercel Blob already sets cache headers automatically,
-  // but this ensures any other static assets are cached properly
+  // This ensures static assets are cached properly
   const pathname = request.nextUrl.pathname
 
   // Check if it's an image or video file
