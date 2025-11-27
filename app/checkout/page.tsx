@@ -94,16 +94,25 @@ export default function CheckoutPage() {
         if (response.ok) {
           const data = await response.json()
           if (data.freeShippingThreshold !== undefined || data.shippingCost !== undefined) {
+            // Ensure proper number conversion - handle both number and string types
             const threshold = typeof data.freeShippingThreshold === 'number' 
               ? data.freeShippingThreshold 
-              : parseFloat(data.freeShippingThreshold) || 0
+              : (data.freeShippingThreshold !== null && data.freeShippingThreshold !== undefined)
+              ? parseFloat(String(data.freeShippingThreshold)) || 0
+              : 0
             const shippingCost = typeof data.shippingCost === 'number'
               ? data.shippingCost
-              : parseFloat(data.shippingCost) || 200
+              : (data.shippingCost !== null && data.shippingCost !== undefined)
+              ? parseFloat(String(data.shippingCost)) || 200
+              : 200
+            
+            // Ensure values are valid numbers
+            const validThreshold = isNaN(threshold) ? 0 : Math.max(0, threshold)
+            const validShippingCost = isNaN(shippingCost) ? 200 : Math.max(0, shippingCost)
             
             setShippingSettings({
-              freeShippingThreshold: threshold,
-              shippingCost: shippingCost,
+              freeShippingThreshold: validThreshold,
+              shippingCost: validShippingCost,
             })
           }
         }
@@ -329,11 +338,13 @@ export default function CheckoutPage() {
   // - If admin sets freeShippingThreshold > 0 (e.g., 1000):
   //   - If subtotal >= threshold: Free shipping (shipping = 0)
   //   - If subtotal < threshold: Add shipping cost (shipping = shippingCost)
-  const shipping = shippingSettings.freeShippingThreshold === 0
+  const threshold = Number(shippingSettings.freeShippingThreshold) || 0
+  const shippingCost = Number(shippingSettings.shippingCost) || 200
+  const shipping = threshold === 0
     ? 0  // Free shipping for all orders
-    : subtotal >= shippingSettings.freeShippingThreshold
+    : subtotal >= threshold
     ? 0  // Free shipping (order amount above threshold)
-    : shippingSettings.shippingCost  // Add shipping cost (order below threshold)
+    : shippingCost  // Add shipping cost (order below threshold)
   
   // Total amount = Product Price + Shipping (this is what goes to payment gateway)
   const total = subtotal + shipping

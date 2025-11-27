@@ -81,18 +81,27 @@ export default function CartPage() {
         console.log('Shipping settings fetched:', data) // Debug log
         
         if (data.freeShippingThreshold !== undefined || data.shippingCost !== undefined) {
+          // Ensure proper number conversion - handle both number and string types
           const threshold = typeof data.freeShippingThreshold === 'number' 
             ? data.freeShippingThreshold 
-            : parseFloat(data.freeShippingThreshold) || 0
+            : (data.freeShippingThreshold !== null && data.freeShippingThreshold !== undefined)
+            ? parseFloat(String(data.freeShippingThreshold)) || 0
+            : 0
           const shippingCost = typeof data.shippingCost === 'number'
             ? data.shippingCost
-            : parseFloat(data.shippingCost) || 200
+            : (data.shippingCost !== null && data.shippingCost !== undefined)
+            ? parseFloat(String(data.shippingCost)) || 200
+            : 200
+          
+          // Ensure values are valid numbers
+          const validThreshold = isNaN(threshold) ? 0 : Math.max(0, threshold)
+          const validShippingCost = isNaN(shippingCost) ? 200 : Math.max(0, shippingCost)
           
           setShippingSettings({
-            freeShippingThreshold: threshold,
-            shippingCost: shippingCost,
+            freeShippingThreshold: validThreshold,
+            shippingCost: validShippingCost,
           })
-          console.log('Shipping settings updated:', { threshold, shippingCost }) // Debug log
+          console.log('Shipping settings updated:', { threshold: validThreshold, shippingCost: validShippingCost }) // Debug log
         }
       } catch (error) {
         console.error('Error fetching shipping settings:', error)
@@ -146,12 +155,17 @@ export default function CartPage() {
     return sum + (price * qty)
   }, 0)
   
-  // If threshold is 0, free shipping for all. Otherwise, free if above threshold, else use shippingCost
-  const shipping = shippingSettings.freeShippingThreshold === 0
-    ? 0
-    : subtotal >= shippingSettings.freeShippingThreshold
-    ? 0
-    : shippingSettings.shippingCost
+  // Calculate shipping cost:
+  // - If threshold is 0: Free shipping for all orders (shipping = 0)
+  // - If threshold > 0 and subtotal >= threshold: Free shipping (shipping = 0)
+  // - If threshold > 0 and subtotal < threshold: Apply shipping cost
+  const threshold = Number(shippingSettings.freeShippingThreshold) || 0
+  const shippingCost = Number(shippingSettings.shippingCost) || 200
+  const shipping = threshold === 0
+    ? 0  // Free shipping for all orders
+    : subtotal >= threshold
+    ? 0  // Free shipping (order amount above threshold)
+    : shippingCost  // Apply shipping cost (order below threshold)
   const total = subtotal + shipping
 
   if (cart.length === 0) {
