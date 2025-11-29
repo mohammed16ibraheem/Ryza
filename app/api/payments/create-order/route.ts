@@ -2,6 +2,59 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
+// Cashfree API configuration
+const CASHFREE_API_BASE = 'https://api.cashfree.com/pg'
+const CASHFREE_API_VERSION = '2023-08-01'
+
+// Helper function to get Cashfree credentials
+function getCashfreeConfig() {
+  const appId = process.env.CASHFREE_APP_ID
+  const secretKey = process.env.CASHFREE_SECRET_KEY
+
+  if (!appId || !secretKey) {
+    throw new Error('Cashfree credentials not configured. Please set CASHFREE_APP_ID and CASHFREE_SECRET_KEY environment variables.')
+  }
+
+  return { appId, secretKey }
+}
+
+// Helper function to make authenticated requests to Cashfree API
+async function cashfreeRequest(endpoint: string, method: string, body?: any) {
+  const { appId, secretKey } = getCashfreeConfig()
+  
+  const url = `${CASHFREE_API_BASE}/${CASHFREE_API_VERSION}${endpoint}`
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'x-api-version': CASHFREE_API_VERSION,
+    'x-client-id': appId,
+    'x-client-secret': secretKey,
+  }
+
+  const options: RequestInit = {
+    method,
+    headers,
+  }
+
+  if (body && method !== 'GET') {
+    options.body = JSON.stringify(body)
+  }
+
+  const response = await fetch(url, options)
+  const data = await response.json()
+
+  if (!response.ok) {
+    console.error('Cashfree API error:', {
+      status: response.status,
+      statusText: response.statusText,
+      data,
+    })
+    throw new Error(data.message || `Cashfree API error: ${response.statusText}`)
+  }
+
+  return data
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -24,21 +77,81 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Payment integration removed - return error
-    return NextResponse.json(
-      { 
-        error: 'Payment service not configured. Please contact support.',
+    // Validate order amount (must be positive)
+    const amount = parseFloat(orderAmount)
+    if (isNaN(amount) || amount <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid order amount' },
+        { status: 400 }
+      )
+    }
+
+    // Get site URL for webhook
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://theryza.com'
+    const webhookUrl = `${siteUrl}/api/payments/webhook`
+
+    // Prepare order data for Cashfree
+    const orderData = {
+      order_id: orderId,
+      order_amount: amount,
+      order_currency: 'INR',
+      customer_details: {
+        customer_id: customerPhone, // Use phone as customer ID
+        customer_name: customerName,
+        customer_email: customerEmail || `${customerPhone}@ryza.com`,
+        customer_phone: customerPhone,
       },
-      { status: 503 }
-    )
+      order_meta: {
+        return_url: returnUrl,
+        notify_url: webhookUrl,
+        payment_methods: 'cc,dc,upi,netbanking,wallet,paylater', // All payment methods
+      },
+      // Add shipping info as order notes
+      order_note: shippingInfo
+        ? `Shipping: ${shippingInfo.address}, ${shippingInfo.location}, ${shippingInfo.pinCode}`
+        : undefined,
+    }
+
+    // Create payment session with Cashfree
+    const sessionResponse = await cashfreeRequest('/orders', 'POST', orderData)
+
+    if (!sessionResponse || !sessionResponse.payment_session_id) {
+      throw new Error('Failed to create payment session')
+    }
+
+    // Cashfree payment URL format: https://payments.cashfree.com/orders/{order_id}
+    // The payment_session_id is used for embedded checkout, but for hosted checkout we use order_id
+    const paymentUrl = `https://payments.cashfree.com/orders/${orderId}`
+
+    // Return payment session details
+    return NextResponse.json({
+      success: true,
+      payment_session_id: sessionResponse.payment_session_id,
+      payment_url: paymentUrl,
+      order_id: orderId,
+      order_amount: amount,
+    })
   } catch (error: any) {
-    console.error('Error creating order:', error)
+    console.error('Error creating Cashfree order:', error)
+    
+    // Handle rate limiting
+    if (error.message?.includes('rate limit') || error.message?.includes('429')) {
+      return NextResponse.json(
+        {
+          error: 'Too many payment requests. Please wait a moment and try again.',
+          rateLimitError: true,
+          retryAfter: 60,
+        },
+        { status: 429 }
+      )
+    }
+
     return NextResponse.json(
-      { 
-        error: 'Failed to create order',
+      {
+        error: error.message || 'Failed to create payment order',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       },
       { status: 500 }
     )
   }
 }
-

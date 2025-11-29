@@ -318,11 +318,23 @@ export default function CheckoutPage() {
         landmark: formData.landmark,
         total: total,
         cart: cart,
+        shippingInfo: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          address: formData.address,
+          location: formData.location,
+          mobileNumber: formData.mobileNumber,
+          landmark: formData.landmark,
+          pinCode: formData.pinCode,
+        },
       }))
 
-      // Payment service removed - show error message
-      alert('Payment service is not configured. Please contact support.')
-      setIsProcessingPayment(false)
+      // Redirect to Cashfree payment page
+      if (data.payment_url) {
+        window.location.href = data.payment_url
+      } else {
+        throw new Error('Payment URL not received from server')
+      }
     } catch (error: any) {
       console.error('Payment error:', error)
       alert(`Payment failed: ${error.message || 'Something went wrong. Please try again.'}`)

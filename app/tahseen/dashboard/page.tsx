@@ -1746,31 +1746,67 @@ export default function AdminPanel() {
               <h3 className="text-base sm:text-lg font-bold text-primary-900 mb-3 sm:mb-4">
                 Preview
               </h3>
-              <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm">
+              <div className="space-y-3 sm:space-y-4 text-xs sm:text-sm">
                 {shippingSettings.freeShippingThreshold === 0 ? (
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                    <span className="text-gray-700">Any Order Amount</span>
-                    <span className="font-semibold text-green-600">Shipping: Free</span>
+                  <div className="space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0 pb-2 border-b border-primary-200">
+                      <span className="text-gray-700 font-medium">Product Price:</span>
+                      <span className="font-semibold text-gray-900">₹2,500</span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0 pb-2 border-b border-primary-200">
+                      <span className="text-gray-700 font-medium">Shipping:</span>
+                      <span className="font-semibold text-green-600">Free</span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0 pt-2">
+                      <span className="text-gray-900 font-bold text-sm sm:text-base">Total Price:</span>
+                      <span className="font-bold text-primary-600 text-base sm:text-lg">₹2,500</span>
+                    </div>
                   </div>
                 ) : (
                   <>
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                      <span className="text-gray-700 break-words">Order Amount: ₹{Math.max(1000, Math.floor(shippingSettings.freeShippingThreshold * 0.5)).toLocaleString('en-IN')}</span>
-                      <span className="font-semibold text-gray-900 whitespace-nowrap">
-                        Shipping: ₹{shippingSettings.shippingCost.toLocaleString('en-IN')}
-                      </span>
+                    {/* Example 1: Order below threshold (with shipping) */}
+                    <div className="bg-white rounded-lg p-3 sm:p-4 border border-primary-200">
+                      <p className="text-xs text-gray-500 mb-2 font-medium">Example: Order Below Threshold</p>
+                      <div className="space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                          <span className="text-gray-700">Product Price:</span>
+                          <span className="font-semibold text-gray-900">₹{Math.max(1000, Math.floor(shippingSettings.freeShippingThreshold * 0.5)).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                          <span className="text-gray-700">Shipping:</span>
+                          <span className="font-semibold text-gray-900">₹{shippingSettings.shippingCost.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0 pt-2 border-t border-gray-200">
+                          <span className="text-gray-900 font-bold">Total Price:</span>
+                          <span className="font-bold text-primary-600 text-base sm:text-lg">₹{(Math.max(1000, Math.floor(shippingSettings.freeShippingThreshold * 0.5)) + shippingSettings.shippingCost).toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
-                      <span className="text-gray-700 break-words">Order Amount: ₹{shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}</span>
-                      <span className="font-semibold text-green-600 whitespace-nowrap">Shipping: Free</span>
+                    {/* Example 2: Order above threshold (free shipping) */}
+                    <div className="bg-white rounded-lg p-3 sm:p-4 border border-primary-200">
+                      <p className="text-xs text-gray-500 mb-2 font-medium">Example: Order Above Threshold</p>
+                      <div className="space-y-2">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                          <span className="text-gray-700">Product Price:</span>
+                          <span className="font-semibold text-gray-900">₹{shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
+                          <span className="text-gray-700">Shipping:</span>
+                          <span className="font-semibold text-green-600">Free</span>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0 pt-2 border-t border-gray-200">
+                          <span className="text-gray-900 font-bold">Total Price:</span>
+                          <span className="font-bold text-primary-600 text-base sm:text-lg">₹{shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}</span>
+                        </div>
+                      </div>
                     </div>
                   </>
                 )}
                 <div className="pt-2 sm:pt-3 border-t border-primary-200">
                   <p className="text-xs text-primary-800 leading-relaxed">
                     {shippingSettings.freeShippingThreshold === 0
-                      ? '✅ Free shipping is enabled for all orders.'
-                      : `💡 Orders above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')} get free shipping. Orders below pay ₹${shippingSettings.shippingCost.toLocaleString('en-IN')} shipping.`}
+                      ? '✅ Free shipping is enabled for all orders. Total price = Product price only.'
+                      : `💡 Orders above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')} get free shipping. Orders below pay ₹${shippingSettings.shippingCost.toLocaleString('en-IN')} shipping. Total price = Product price + Shipping.`}
                   </p>
                 </div>
               </div>
