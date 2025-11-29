@@ -120,11 +120,8 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create payment session')
     }
 
-    // For hosted checkout, we need to use the payment_session_id in the checkout URL
-    // The payment URL format depends on the checkout method, but for redirect checkout,
-    // we can use the payment_session_id with Cashfree.js SDK or redirect to payment page
-    // For now, we'll return the payment_session_id and let the frontend handle the redirect
-    // The frontend should use Cashfree.js SDK: cashfree.checkout({ paymentSessionId: sessionResponse.payment_session_id })
+    // For hosted checkout redirect, construct the payment URL
+    // Cashfree hosted checkout URL format
     const paymentUrl = `https://payments.cashfree.com/orders/${orderId}`
 
     // Return payment session details
