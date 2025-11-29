@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FiArrowLeft, FiMapPin, FiNavigation } from 'react-icons/fi'
+import { load } from '@cashfreepayments/cashfree-js'
 
 interface CartItem {
   id: number
@@ -329,11 +330,42 @@ export default function CheckoutPage() {
         },
       }))
 
-      // Redirect to Cashfree payment page
-      if (data.payment_url) {
+      // Open Cashfree checkout using SDK (recommended method for hosted checkout)
+      if (data.payment_session_id) {
+        try {
+          // Load Cashfree SDK
+          const cashfree = await load({
+            mode: 'production' // Use 'sandbox' for testing
+          })
+          
+          if (cashfree) {
+            // Open checkout page with redirect
+            cashfree.checkout({
+              paymentSessionId: data.payment_session_id,
+              redirectTarget: '_self' // Opens in same tab
+            })
+          } else {
+            // Fallback: Try direct URL redirect if SDK fails to load
+            if (data.payment_url) {
+              window.location.href = data.payment_url
+            } else {
+              throw new Error('Payment session ID received but unable to open checkout')
+            }
+          }
+        } catch (sdkError) {
+          console.error('Cashfree SDK error:', sdkError)
+          // Fallback: Try direct URL redirect
+          if (data.payment_url) {
+            window.location.href = data.payment_url
+          } else {
+            throw new Error('Failed to open payment checkout. Please try again.')
+          }
+        }
+      } else if (data.payment_url) {
+        // Fallback: Use direct URL if payment_session_id not available
         window.location.href = data.payment_url
       } else {
-        throw new Error('Payment URL not received from server')
+        throw new Error('Payment session ID or URL not received from server')
       }
     } catch (error: any) {
       console.error('Payment error:', error)

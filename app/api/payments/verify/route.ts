@@ -22,7 +22,8 @@ function getCashfreeConfig() {
 async function cashfreeRequest(endpoint: string, method: string) {
   const { appId, secretKey } = getCashfreeConfig()
   
-  const url = `${CASHFREE_API_BASE}/${CASHFREE_API_VERSION}${endpoint}`
+  // Correct URL format: https://api.cashfree.com/pg/orders/{order_id} (API version goes in header, not URL)
+  const url = `${CASHFREE_API_BASE}${endpoint}`
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',

@@ -22,7 +22,8 @@ function getCashfreeConfig() {
 async function cashfreeRequest(endpoint: string, method: string, body?: any) {
   const { appId, secretKey } = getCashfreeConfig()
   
-  const url = `${CASHFREE_API_BASE}/${CASHFREE_API_VERSION}${endpoint}`
+  // Correct URL format: https://api.cashfree.com/pg/orders (API version goes in header, not URL)
+  const url = `${CASHFREE_API_BASE}${endpoint}`
   
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -106,9 +107,9 @@ export async function POST(request: NextRequest) {
         notify_url: webhookUrl,
         payment_methods: 'cc,dc,upi,netbanking,wallet,paylater', // All payment methods
       },
-      // Add shipping info as order notes
-      order_note: shippingInfo
-        ? `Shipping: ${shippingInfo.address}, ${shippingInfo.location}, ${shippingInfo.pinCode}`
+      // Add shipping info as order notes (minimum 3 characters required, max 200)
+      order_note: shippingInfo && shippingInfo.address
+        ? `Shipping: ${shippingInfo.address}, ${shippingInfo.location || ''}, ${shippingInfo.pinCode || ''}`.trim().substring(0, 200)
         : undefined,
     }
 
@@ -119,8 +120,11 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to create payment session')
     }
 
-    // Cashfree payment URL format: https://payments.cashfree.com/orders/{order_id}
-    // The payment_session_id is used for embedded checkout, but for hosted checkout we use order_id
+    // For hosted checkout, we need to use the payment_session_id in the checkout URL
+    // The payment URL format depends on the checkout method, but for redirect checkout,
+    // we can use the payment_session_id with Cashfree.js SDK or redirect to payment page
+    // For now, we'll return the payment_session_id and let the frontend handle the redirect
+    // The frontend should use Cashfree.js SDK: cashfree.checkout({ paymentSessionId: sessionResponse.payment_session_id })
     const paymentUrl = `https://payments.cashfree.com/orders/${orderId}`
 
     // Return payment session details
