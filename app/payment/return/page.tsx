@@ -47,7 +47,19 @@ export default function PaymentReturnPage() {
     }
   }, [])
 
-  const generateInvoice = () => {
+  const generateInvoice = async () => {
+    // ✅ SECURITY: Only allow invoice generation for successful payments
+    if (paymentStatus !== 'success') {
+      alert('Invoice can only be generated for successful payments. Please complete your payment first.')
+      return
+    }
+
+    // Double-check payment status before generating invoice
+    if (!orderDetails || orderDetails.payment_status !== 'SUCCESS' && orderDetails.payment_status !== 'PAID' && orderDetails.order_status !== 'PAID') {
+      alert('Payment not confirmed. Invoice cannot be generated.')
+      return
+    }
+
     const doc = new jsPDF()
     const pageWidth = doc.internal.pageSize.getWidth()
     const margin = 20
@@ -61,6 +73,55 @@ export default function PaymentReturnPage() {
       const lines = doc.splitTextToSize(text, pageWidth - 2 * margin)
       doc.text(lines, x, y)
       return y + (lines.length * fontSize * 0.4)
+    }
+
+    // Helper function to add image to PDF
+    const addImageToPDF = async (imageUrl: string, x: number, y: number, width: number, height: number): Promise<boolean> => {
+      try {
+        // Handle proxy URLs and direct GitHub URLs
+        let fetchUrl = imageUrl
+        if (imageUrl.includes('/api/images/')) {
+          fetchUrl = imageUrl
+        } else if (imageUrl.includes('raw.githubusercontent.com') || imageUrl.includes('github.com')) {
+          fetchUrl = imageUrl
+        }
+        
+        // Fetch image with CORS handling
+        const response = await fetch(fetchUrl, {
+          mode: 'cors',
+          cache: 'no-cache'
+        })
+        
+        if (!response.ok) {
+          console.warn('Failed to fetch image:', imageUrl)
+          return false
+        }
+        
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            try {
+              const base64 = reader.result as string
+              // Determine image format
+              const format = blob.type.includes('png') ? 'PNG' : 'JPEG'
+              doc.addImage(base64, format, x, y, width, height)
+              resolve(true)
+            } catch (error) {
+              console.error('Error adding image to PDF:', error)
+              resolve(false)
+            }
+          }
+          reader.onerror = () => {
+            console.error('Error reading image file')
+            resolve(false)
+          }
+          reader.readAsDataURL(blob)
+        })
+      } catch (error) {
+        console.error('Error fetching image for PDF:', error)
+        return false
+      }
     }
 
     // Header with Logo and Branding
@@ -88,8 +149,18 @@ export default function PaymentReturnPage() {
     yPos = addText('Order Information', margin, yPos, 14, true)
     yPos += 3
     
-    if (orderDetails?.order_id) {
-      yPos = addText(`Order ID: ${orderDetails.order_id}`, margin, yPos, 10)
+    // Show our Order ID
+    const displayOrderId = orderDetails?.order_id || orderId || 'N/A'
+    yPos = addText(`Order ID: ${displayOrderId}`, margin, yPos, 10)
+    
+    // Add Cashfree Order ID (cf_order_id) if available - this is Cashfree's unique ID
+    if (orderDetails?.cf_order_id) {
+      yPos = addText(`Cashfree Order ID: ${orderDetails.cf_order_id}`, margin, yPos, 9)
+    }
+    
+    // Add Cashfree Payment ID if available
+    if (orderDetails?.cf_payment_id) {
+      yPos = addText(`Payment ID: ${orderDetails.cf_payment_id}`, margin, yPos, 9)
     }
     
     if (orderDetails?.order_amount) {
@@ -101,7 +172,6 @@ export default function PaymentReturnPage() {
     if (orderDetails?.payment_method) {
       yPos = addText(`Payment Method: ${orderDetails.payment_method}`, margin, yPos, 10)
     } else if (orderDetails?.payment_status) {
-      // Fallback to payment_status if payment_method not available
       yPos = addText(`Payment Status: ${orderDetails.payment_status}`, margin, yPos, 10)
     }
     
@@ -115,19 +185,50 @@ export default function PaymentReturnPage() {
     yPos = addText(`Date: ${currentDate}`, margin, yPos, 10)
     yPos += 10
 
-    // Product Details
+    // Product Details with Images
     if (cartItems.length > 0) {
       yPos = addText('Product Details', margin, yPos, 14, true)
       yPos += 3
 
-      cartItems.forEach((item, index) => {
-        if (yPos > 250) {
+      let itemIndex = 0
+      for (const item of cartItems) {
+        // Check if we need a new page
+        if (yPos > 200) {
           doc.addPage()
           yPos = margin
         }
 
-        yPos = addText(`${index + 1}. ${item.name || 'Product'}`, margin, yPos, 11, true)
+        // Build product name with color/size variants
+        let productName = item.name || 'Product'
+        if (item.selectedColor) {
+          productName += ` - ${item.selectedColor}`
+        }
+        if (item.selectedSize) {
+          productName += ` (Size: ${item.selectedSize})`
+        }
+
+        // Product number and name
+        itemIndex++
+        yPos = addText(`${itemIndex}. ${productName}`, margin, yPos, 11, true)
         
+        // Add product image (30x30mm)
+        const imageSize = 30
+        const imageX = pageWidth - margin - imageSize
+        const imageY = yPos - 15
+        
+        if (item.image) {
+          const imageAdded = await addImageToPDF(item.image, imageX, imageY, imageSize, imageSize)
+          if (!imageAdded) {
+            // If image fails, add a placeholder
+            doc.setFillColor(240, 240, 240)
+            doc.rect(imageX, imageY, imageSize, imageSize, 'F')
+            doc.setFontSize(8)
+            doc.setTextColor(150, 150, 150)
+            doc.text('Image', imageX + imageSize/2 - 5, imageY + imageSize/2)
+          }
+        }
+        
+        // Product details
         if (item.description) {
           yPos = addText(`Description: ${item.description}`, margin + 5, yPos + 3, 9)
         }
@@ -141,11 +242,11 @@ export default function PaymentReturnPage() {
         const itemTotal = itemPrice * itemQuantity
         
         yPos = addText(`Price: ₹${itemPrice.toLocaleString('en-IN')}`, margin + 5, yPos + 3, 9)
-        yPos = addText(`Quantity: ${itemQuantity}`, margin + 5, yPos + 3, 9)
-        yPos = addText(`Total: ₹${itemTotal.toLocaleString('en-IN')}`, margin + 5, yPos + 3, 9, true)
+        yPos = addText(`Quantity: ${itemQuantity}`, margin + 5, yPos + 3, 9, true)
+        yPos = addText(`Total: ₹${itemTotal.toLocaleString('en-IN')}`, margin + 5, yPos + 3, 9, true, [146, 72, 122])
         
-        yPos += 5
-      })
+        yPos += 8
+      }
       yPos += 5
     }
 
@@ -227,6 +328,9 @@ export default function PaymentReturnPage() {
     const verifyPayment = async () => {
       if (!orderId) {
         setPaymentStatus('failed')
+        setOrderDetails({
+          payment_message: 'Order ID is missing. Payment cannot be verified.',
+        })
         return
       }
 
@@ -234,65 +338,83 @@ export default function PaymentReturnPage() {
         const response = await fetch(`/api/payments/verify?order_id=${orderId}`)
         const data = await response.json()
 
-        if (data.success) {
-          // Check payment status - SUCCESS or PAID means payment successful
-          const isSuccess = data.payment_status === 'SUCCESS' || 
-                           data.order_status === 'PAID' ||
-                           data.payment_message?.includes('Success') ||
-                           data.payment_message?.includes('00::')
+        // Strict verification: Payment is ONLY successful if Cashfree confirms it
+        const isPaymentSuccessful = 
+          data.success === true && 
+          (data.payment_status === 'SUCCESS' || 
+           data.payment_status === 'PAID' ||
+           data.order_status === 'PAID')
+        
+        if (isPaymentSuccessful) {
+          // ✅ PAYMENT SUCCESSFUL - Only now we do these actions:
+          setPaymentStatus('success')
+          setOrderDetails(data)
           
-          if (isSuccess) {
-            setPaymentStatus('success')
-            setOrderDetails(data)
-            
-            // Send order confirmation email
-            if (cartItems.length > 0 && shippingInfo) {
-              fetch('/api/send-order-email', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
+          // Send order confirmation email ONLY on success
+          if (cartItems.length > 0 && shippingInfo) {
+            fetch('/api/send-order-email', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                orderDetails: {
+                  order_id: data.order_id,
+                  cf_order_id: data.cf_order_id, // Cashfree's unique order ID
+                  order_amount: data.order_amount,
+                  payment_status: data.payment_status || 'SUCCESS',
+                  payment_method: data.payment_method,
+                  cf_payment_id: data.cf_payment_id,
                 },
-                body: JSON.stringify({
-                  orderDetails: {
-                    order_id: data.order_id,
-                    order_amount: data.order_amount,
-                    payment_status: data.payment_status || 'SUCCESS',
-                    payment_method: data.payment_method,
-                    cf_payment_id: data.cf_payment_id,
-                  },
-                  shippingInfo: shippingInfo,
-                  cartItems: cartItems,
-                }),
-              }).catch(err => {
-                console.error('Error sending order email:', err)
-                // Don't fail the page if email fails
-              })
-            }
-            
-            // Clear cart on successful payment
-            localStorage.removeItem('cart')
-            localStorage.removeItem('pending_order')
-            window.dispatchEvent(new Event('cartUpdated'))
-          } else {
-            setPaymentStatus('failed')
-            setOrderDetails(data)
-          }
-        } else {
-          // Check for rate limit error
-          if (data.rateLimitError) {
-            setPaymentStatus('failed')
-            setOrderDetails({
-              ...data,
-              payment_message: data.message || 'Too many requests. Please try again later.',
+                shippingInfo: shippingInfo,
+                cartItems: cartItems,
+              }),
+            }).catch(err => {
+              console.error('Error sending order email:', err)
+              // Don't fail the page if email fails
             })
-          } else {
-            setPaymentStatus('failed')
-            setOrderDetails(data)
           }
+          
+          // Clear cart ONLY on successful payment
+          localStorage.removeItem('cart')
+          localStorage.removeItem('pending_order')
+          window.dispatchEvent(new Event('cartUpdated'))
+        } else {
+          // ❌ PAYMENT FAILED OR NOT COMPLETED
+          setPaymentStatus('failed')
+          
+          // Determine failure reason
+          let failureMessage = 'Payment was not completed.'
+          
+          if (data.order_status === 'ACTIVE' || data.order_status === 'PENDING') {
+            failureMessage = 'Payment was not completed. You can try again to complete your order.'
+          } else if (data.payment_status === 'FAILED' || data.order_status === 'FAILED') {
+            failureMessage = data.payment_message || 'Payment failed. Please try again with a different payment method.'
+          } else if (data.order_status === 'EXPIRED') {
+            failureMessage = 'Payment session expired. Please create a new order.'
+          } else if (!data.success) {
+            failureMessage = data.payment_message || data.error || 'Payment verification failed. Please contact support if payment was deducted.'
+          }
+          
+          setOrderDetails({
+            ...data,
+            payment_message: failureMessage,
+            order_status: data.order_status || 'UNPAID',
+            payment_status: data.payment_status || 'FAILED',
+          })
+          
+          // DO NOT clear cart on failure - user can retry
+          // DO NOT send email on failure
+          // Keep pending_order in localStorage so user can retry
         }
       } catch (error) {
         console.error('Error verifying payment:', error)
         setPaymentStatus('failed')
+        setOrderDetails({
+          payment_message: 'Unable to verify payment status. Please check your order status in Cashfree or contact support if payment was deducted.',
+          error: 'Verification failed',
+        })
+        // DO NOT clear cart on error
       }
     }
 
@@ -389,7 +511,7 @@ export default function PaymentReturnPage() {
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-0">
                       <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Order Details</h3>
                       <button
-                        onClick={generateInvoice}
+                        onClick={() => generateInvoice()}
                         className="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-primary-600 text-white rounded-lg sm:rounded-xl font-semibold hover:bg-primary-700 active:bg-primary-800 transition-all text-sm sm:text-base shadow-md hover:shadow-lg active:scale-95"
                       >
                         <FiDownload className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -403,6 +525,14 @@ export default function PaymentReturnPage() {
                           {orderDetails.order_id}
                         </span>
                       </div>
+                      {orderDetails.cf_order_id && (
+                        <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0 pb-3 sm:pb-4 border-b border-gray-200">
+                          <span className="text-sm sm:text-base text-gray-600 font-medium">Cashfree Order ID:</span>
+                          <span className="text-sm sm:text-base font-bold text-gray-700 break-all sm:break-normal text-right sm:text-left font-mono">
+                            {orderDetails.cf_order_id}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0 pb-3 sm:pb-4 border-b border-gray-200">
                         <span className="text-sm sm:text-base text-gray-600 font-medium">Amount Paid:</span>
                         <span className="text-lg sm:text-xl md:text-2xl font-bold text-primary-600 text-right sm:text-left">
@@ -465,10 +595,13 @@ export default function PaymentReturnPage() {
 
                 {/* Failed Message */}
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
-                  Payment Failed
+                  Payment Not Completed
                 </h1>
-                <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-4 sm:mb-6 max-w-lg mx-auto">
-                  Your payment could not be processed. Please try again or use a different payment method.
+                <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-2 sm:mb-3 max-w-lg mx-auto">
+                  Your payment was not completed. No amount has been charged and no invoice has been generated.
+                </p>
+                <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-4 sm:mb-6 max-w-lg mx-auto font-semibold">
+                  Your cart items are still saved. You can try again to complete your order.
                 </p>
 
                 {/* Error Message Card */}

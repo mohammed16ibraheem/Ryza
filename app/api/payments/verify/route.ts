@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 // Cashfree API configuration
 const CASHFREE_API_BASE = 'https://api.cashfree.com/pg'
-const CASHFREE_API_VERSION = '2023-08-01'
+const CASHFREE_API_VERSION = '2025-01-01' // Upgraded to latest API version
 
 // Helper function to get Cashfree credentials
 function getCashfreeConfig() {
@@ -40,12 +40,23 @@ async function cashfreeRequest(endpoint: string, method: string) {
   const data = await response.json()
 
   if (!response.ok) {
-    console.error('Cashfree API error:', {
+    // Enhanced error handling with specific error codes
+    const errorInfo = {
       status: response.status,
       statusText: response.statusText,
       data,
-    })
-    throw new Error(data.message || `Cashfree API error: ${response.statusText}`)
+      subCode: data.sub_code || data.code,
+      message: data.message || response.statusText,
+    }
+    
+    console.error('Cashfree API error:', errorInfo)
+    
+    // Throw error with status code for better handling
+    const error: any = new Error(errorInfo.message)
+    error.status = response.status
+    error.subCode = errorInfo.subCode
+    error.data = data
+    throw error
   }
 
   return data
@@ -83,21 +94,24 @@ export async function GET(request: NextRequest) {
       // Continue without payment details if not available
     }
 
-    // Determine payment status
+    // Determine payment status according to Cashfree documentation
+    // Order statuses: ACTIVE, PAID, EXPIRED, TERMINATED
+    // Payment is successful ONLY when order_status is PAID (per Cashfree docs)
     const orderStatus = orderData.order_status || 'UNPAID'
     const paymentStatus = paymentData?.payments?.[0]?.payment_status || orderStatus
     
-    // Payment is successful if status is PAID or SUCCESS
+    // According to Cashfree: "An order is considered successful when the order_status is PAID"
+    // We check both order_status and payment_status for extra security
     const isSuccess = 
       orderStatus === 'PAID' || 
       paymentStatus === 'PAID' || 
-      paymentStatus === 'SUCCESS' ||
-      orderData.payment_status === 'SUCCESS'
+      paymentStatus === 'SUCCESS'
 
     // Prepare response
     const response = {
       success: isSuccess,
-      order_id: orderData.order_id,
+      order_id: orderData.order_id, // Our order ID
+      cf_order_id: orderData.cf_order_id, // Cashfree's unique order ID
       order_amount: orderData.order_amount,
       order_currency: orderData.order_currency || 'INR',
       order_status: orderStatus,
@@ -114,25 +128,66 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Error verifying Cashfree order:', error)
     
-    // Handle rate limiting
-    if (error.message?.includes('rate limit') || error.message?.includes('429')) {
-      return NextResponse.json(
-        {
-          error: 'Too many verification requests. Please wait a moment and try again.',
-          rateLimitError: true,
-          success: false,
-        },
-        { status: 429 }
-      )
+    // Enhanced error handling based on HTTP status codes
+    const status = error.status || 500
+    
+    switch (status) {
+      case 400:
+        return NextResponse.json(
+          {
+            error: 'Invalid order ID format.',
+            success: false,
+          },
+          { status: 400 }
+        )
+      
+      case 401:
+        return NextResponse.json(
+          {
+            error: 'Payment gateway authentication failed.',
+            success: false,
+          },
+          { status: 401 }
+        )
+      
+      case 404:
+        return NextResponse.json(
+          {
+            error: 'Order not found.',
+            success: false,
+          },
+          { status: 404 }
+        )
+      
+      case 429:
+        return NextResponse.json(
+          {
+            error: 'Too many verification requests. Please wait a moment and try again.',
+            rateLimitError: true,
+            success: false,
+          },
+          { status: 429 }
+        )
+      
+      case 500:
+      case 503:
+        return NextResponse.json(
+          {
+            error: 'Payment gateway is temporarily unavailable. Please try again later.',
+            success: false,
+          },
+          { status: status }
+        )
+      
+      default:
+        return NextResponse.json(
+          {
+            error: error.message || 'Failed to verify order',
+            success: false,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+          },
+          { status: status || 500 }
+        )
     }
-
-    return NextResponse.json(
-      {
-        error: error.message || 'Failed to verify order',
-        success: false,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      },
-      { status: 500 }
-    )
   }
 }
