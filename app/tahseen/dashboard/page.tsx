@@ -540,7 +540,7 @@ export default function AdminPanel() {
     }
 
     setUploading(true)
-    setUploadStatus(imageFiles.length > 0 ? 'Uploading files...' : 'Saving product...')
+    setUploadStatus(imageFiles.length > 0 ? 'Uploading images to GitHub...' : 'Saving product...')
 
     try {
       const productId = editingProductId || crypto.randomUUID()
@@ -555,6 +555,7 @@ export default function AdminPanel() {
 
       // Upload newly selected images and add to the array
       if (imageFiles.length > 0) {
+        setUploadStatus(`Uploading ${imageFiles.length} image(s) to GitHub...`)
         const imageFormData = new FormData()
         imageFiles.forEach((file) => {
           imageFormData.append('files', file)
@@ -576,14 +577,23 @@ export default function AdminPanel() {
         }
 
         const imageData = await imageResponse.json()
+        if (!imageData.success || !imageData.files || imageData.files.length === 0) {
+          throw new Error('Image upload completed but no files were returned')
+        }
+        
         // Combine existing images with newly uploaded ones
         uploadedImages = [...uploadedImages, ...imageData.files]
+        setUploadStatus(`Successfully uploaded ${imageData.files.length} image(s). Saving product...`)
       }
 
       // Upload color variant images
       const colorVariantsData: ColorVariant[] = []
+      if (colorVariants.length > 0) {
+        setUploadStatus('Uploading color variant images...')
+      }
       for (const variant of colorVariants) {
         if (variant.imageFiles.length > 0) {
+          setUploadStatus(`Uploading images for ${variant.color} variant...`)
           const colorFormData = new FormData()
           variant.imageFiles.forEach((file) => {
             colorFormData.append('files', file)
@@ -601,13 +611,18 @@ export default function AdminPanel() {
 
           if (colorResponse.ok) {
             const colorData = await colorResponse.json()
-            colorVariantsData.push({
-              color: variant.color,
-              images: colorData.files
-            })
+            if (colorData.success && colorData.files && colorData.files.length > 0) {
+              colorVariantsData.push({
+                color: variant.color,
+                images: colorData.files
+              })
+            } else {
+              console.warn(`Color variant ${variant.color} upload completed but no files returned`)
+            }
           } else {
             const errorData = await colorResponse.json().catch(() => ({}))
             console.warn('Color variant image upload failed:', errorData.message || errorData.error)
+            // Continue with other variants even if one fails
           }
         } else if (variant.uploadedImages.length > 0) {
           // Already uploaded images (when editing)
@@ -616,6 +631,11 @@ export default function AdminPanel() {
             images: variant.uploadedImages
           })
         }
+      }
+      
+      // Small delay to ensure GitHub has processed all uploads
+      if (imageFiles.length > 0 || colorVariants.some(v => v.imageFiles.length > 0)) {
+        await new Promise(resolve => setTimeout(resolve, 300))
       }
 
       // Prepare product data for API
@@ -639,6 +659,7 @@ export default function AdminPanel() {
       }
 
       // Save to API
+      setUploadStatus('Saving product data...')
       const saveResponse = await fetch('/api/products', {
         method: 'POST',
         headers: {
@@ -654,13 +675,14 @@ export default function AdminPanel() {
 
       // Verify the saved product has the correct data
       const savedProductData = await saveResponse.json()
-      if (!savedProductData || !savedProductData.id) {
+      // API returns { success: true, product: {...} }
+      if (!savedProductData || !savedProductData.success || !savedProductData.product || !savedProductData.product.id) {
         throw new Error('Product save response is invalid')
       }
       
       // Wait a moment for GitHub to process the save
       await new Promise(resolve => setTimeout(resolve, 500))
-      
+
       // Refresh products from API
       const refreshResponse = await fetch('/api/products')
       if (!refreshResponse.ok) {
@@ -735,6 +757,7 @@ export default function AdminPanel() {
     } catch (error) {
       console.error('Upload error:', error)
       setUploading(false)
+      setUploadStatus('') // Clear loading status on error
       showToastNotification(`Error: ${error instanceof Error ? error.message : 'Failed to upload files'}`, 'error')
     }
   }
@@ -913,21 +936,21 @@ export default function AdminPanel() {
                   <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
-                </div>
+            </div>
               )}
               {toastType === 'error' && (
                 <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-red-500 rounded-full flex items-center justify-center">
                   <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </div>
+            </div>
               )}
               {toastType === 'info' && (
                 <div className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-full flex items-center justify-center">
                   <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                </div>
+          </div>
               )}
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-sm sm:text-base md:text-lg break-words">{toastMessage}</p>
@@ -939,12 +962,12 @@ export default function AdminPanel() {
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                    </svg>
               </button>
             </div>
           </div>
-        </div>
-      )}
+                  </div>
+                )}
 
       <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 space-y-6 sm:space-y-8 md:space-y-10">
         {/* Header with Logout */}
@@ -963,7 +986,7 @@ export default function AdminPanel() {
 
         <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 border border-gray-100">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
-            <div className="flex-1">
+                <div className="flex-1">
               <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-primary-600 font-semibold">
                 Admin Control
               </p>
@@ -972,8 +995,8 @@ export default function AdminPanel() {
               </h1>
               <p className="text-gray-500 mt-2 text-sm sm:text-base">
                 Upload up to 4 images (1 thumbnail + 3 product images) with pricing & descriptions. Choose the collection where it should appear.
-              </p>
-            </div>
+                    </p>
+                </div>
           </div>
 
           {/* Loading status for processing (compressing, uploading, etc.) */}
@@ -1154,22 +1177,22 @@ export default function AdminPanel() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Bulk Upload */}
                       <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={handleImagesChange}
-                          className="hidden"
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImagesChange}
+                      className="hidden"
                           id="product-images-bulk"
                           disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES || !!editingProductId}
-                        />
+                    />
                         <label htmlFor="product-images-bulk" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES || editingProductId ? 'opacity-50 cursor-not-allowed' : ''}`}>
                           <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
-                          <div>
+                      <div>
                             <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload Multiple</p>
                             <p className="text-xs text-gray-400 mt-1">Select multiple at once</p>
-                          </div>
-                        </label>
+                      </div>
+                    </label>
                       </div>
                       {/* Single Upload */}
                       <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
@@ -1188,7 +1211,7 @@ export default function AdminPanel() {
                             <p className="text-xs text-gray-400 mt-1">Add images one by one</p>
                           </div>
                         </label>
-                      </div>
+                  </div>
                     </div>
                   )}
                   <p className="text-xs text-gray-400 text-center">
@@ -1214,23 +1237,23 @@ export default function AdminPanel() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {/* Bulk Upload */}
                     <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImagesChange}
-                        className="hidden"
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImagesChange}
+                    className="hidden"
                       id="product-images-hijabs-bulk"
                       disabled={imagePreviews.length + existingImages.length >= MAX_IMAGES || !!editingProductId}
-                      />
+                  />
                       <label htmlFor="product-images-hijabs-bulk" className={`cursor-pointer flex flex-col items-center space-y-2 text-gray-500 min-h-[100px] sm:min-h-[120px] justify-center ${imagePreviews.length + existingImages.length >= MAX_IMAGES || editingProductId ? 'opacity-50 cursor-not-allowed' : ''}`}>
                         <FiUploadCloud className="w-6 h-6 sm:w-8 sm:h-8 text-primary-500" />
-                        <div>
+                    <div>
                           <p className="font-semibold text-gray-700 text-sm sm:text-base">Upload Multiple</p>
                           <p className="text-xs text-gray-400 mt-1">Select multiple at once</p>
-                        </div>
-                      </label>
                     </div>
+                  </label>
+                </div>
                     {/* Single Upload */}
                     <div className="border border-dashed border-gray-300 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-center">
                       <input
@@ -1269,7 +1292,7 @@ export default function AdminPanel() {
                         <div className="relative rounded-2xl overflow-hidden border-2 shadow-lg transition-all hover:shadow-xl" style={{
                           borderColor: displayIndex === 0 ? '#92487A' : '#e5e7eb',
                           borderWidth: displayIndex === 0 ? '3px' : '2px'
-                        }}>
+                      }}>
                           <img src={src} alt={`Existing ${displayIndex + 1}`} className="w-full h-40 object-cover" />
                           
                           {/* Remove Button */}
@@ -1282,7 +1305,7 @@ export default function AdminPanel() {
                             <FiTrash2 className="w-4 h-4" />
                           </button>
                           
-                          {/* Thumbnail Badge */}
+                        {/* Thumbnail Badge */}
                           {displayIndex === 0 && (
                             <div className="absolute top-3 left-3 z-10">
                               <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-xl flex items-center gap-2 border-2 border-white/30 backdrop-blur-sm">
@@ -1292,8 +1315,8 @@ export default function AdminPanel() {
                                 </svg>
                                 <span>THUMBNAIL</span>
                               </div>
-                            </div>
-                          )}
+                          </div>
+                        )}
                           
                           {/* Mark Out of Stock */}
                           <div className="absolute bottom-3 right-3 z-10">
@@ -1302,8 +1325,8 @@ export default function AdminPanel() {
                                 ? 'bg-red-600 hover:bg-red-700 text-white' 
                                 : 'bg-white/95 backdrop-blur-sm hover:bg-white text-gray-700 border-2 border-gray-200 hover:border-red-300'
                             }`}>
-                              <input
-                                type="checkbox"
+                            <input
+                              type="checkbox"
                                 checked={outOfStockImages.includes(displayIndex)}
                                 onChange={() => toggleOutOfStock(displayIndex)}
                                 className="sr-only"
@@ -1323,8 +1346,8 @@ export default function AdminPanel() {
                                   <span className="text-xs font-semibold">Mark Out of Stock</span>
                                 </>
                               )}
-                            </label>
-                          </div>
+                          </label>
+                        </div>
                           
                           {/* Out of Stock Overlay */}
                           {outOfStockImages.includes(displayIndex) && (
@@ -1337,22 +1360,22 @@ export default function AdminPanel() {
                                   <span>OUT OF STOCK</span>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold text-gray-700">
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-700">
                             {displayIndex === 0 ? 'Thumbnail' : `Image ${displayIndex + 1}`} Color Name
-                          </label>
-                          <input
-                            type="text"
+                        </label>
+                        <input
+                          type="text"
                             value={imageColors[displayIndex] || ''}
                             onChange={(e) => handleImageColorChange(displayIndex, e.target.value)}
                             placeholder={displayIndex === 0 ? 'Thumbnail color (optional)' : `e.g., ${displayIndex === 1 ? 'brown lightbround morelightbroud' : displayIndex === 2 ? 'green lightgreen morelightgreen' : 'black blue lightbule'}`}
                             className="w-full rounded-lg border border-gray-200 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:border-primary-500 focus:ring-primary-200 min-h-[40px]"
-                          />
-                        </div>
+                        />
                       </div>
+                    </div>
                     )
                   })}
                 </div>
