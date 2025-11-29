@@ -329,42 +329,70 @@ export default function CheckoutPage() {
         },
       }))
 
-      // Redirect to Cashfree hosted checkout page
+      // Redirect to Cashfree hosted checkout page using SDK
       // Users will be able to select their payment method on Cashfree's hosted page
       if (data.payment_session_id) {
-        // Load Cashfree.js SDK from CDN and redirect to payment page
-        // This opens Cashfree's hosted checkout where users can select payment method
-        const script = document.createElement('script')
-        script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js'
-        
-        script.onload = () => {
+        // Use dynamic import to load Cashfree SDK (avoids TypeScript issues)
+        const openCashfreeCheckout = async () => {
           try {
-            // @ts-ignore - Cashfree SDK loaded from CDN
-            const cashfree = (window as any).Cashfree
-            if (cashfree && typeof cashfree.checkout === 'function') {
+            // Dynamically import Cashfree SDK
+            const { load } = await import('@cashfreepayments/cashfree-js')
+            
+            // Initialize SDK
+            const cashfree = await load({
+              mode: 'production' // Use 'sandbox' for testing
+            })
+            
+            if (cashfree) {
+              // Open checkout page
               cashfree.checkout({
                 paymentSessionId: data.payment_session_id,
                 redirectTarget: '_self', // Opens in same tab - redirect checkout
               })
             } else {
-              // Fallback: Direct URL redirect
-              window.location.href = data.payment_url || `https://payments.cashfree.com/orders/${orderId}`
+              throw new Error('Failed to initialize Cashfree SDK')
             }
           } catch (error) {
-            console.error('Error opening Cashfree checkout:', error)
-            // Fallback: Direct URL redirect
-            window.location.href = data.payment_url || `https://payments.cashfree.com/orders/${orderId}`
+            console.error('Error loading Cashfree SDK:', error)
+            // Fallback: Try CDN approach
+            const script = document.createElement('script')
+            script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js'
+            
+            script.onload = () => {
+              try {
+                // @ts-ignore - Try CDN initialization
+                const Cashfree = (window as any).Cashfree
+                if (Cashfree) {
+                  const cashfree = Cashfree({ mode: 'production' })
+                  if (cashfree && cashfree.checkout) {
+                    cashfree.checkout({
+                      paymentSessionId: data.payment_session_id,
+                      redirectTarget: '_self',
+                    })
+                    return
+                  }
+                }
+                throw new Error('Cashfree SDK not available')
+              } catch (cdnError) {
+                console.error('CDN fallback also failed:', cdnError)
+                alert('Failed to open payment page. Please try again.')
+                setIsProcessingPayment(false)
+              }
+            }
+            
+            script.onerror = () => {
+              console.error('Failed to load Cashfree SDK from CDN')
+              alert('Failed to load payment gateway. Please refresh and try again.')
+              setIsProcessingPayment(false)
+            }
+            
+            document.head.appendChild(script)
           }
         }
-        
-        script.onerror = () => {
-          // Fallback: Direct URL redirect if SDK fails to load
-          window.location.href = data.payment_url || `https://payments.cashfree.com/orders/${orderId}`
-        }
-        
-        document.head.appendChild(script)
+
+        openCashfreeCheckout()
       } else if (data.payment_url) {
-        // Fallback: Use provided payment URL
+        // Fallback: Use provided payment URL (though this shouldn't happen with correct implementation)
         window.location.href = data.payment_url
       } else {
         throw new Error('Payment session ID or URL not received from server')
