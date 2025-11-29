@@ -105,7 +105,9 @@ export async function POST(request: NextRequest) {
       order_meta: {
         return_url: returnUrl,
         notify_url: webhookUrl,
-        payment_methods: 'cc,dc,upi,netbanking,wallet,paylater', // All payment methods
+        // Valid payment methods according to Cashfree API: cc,dc,ppc,ccc,emi,paypal,upi,nb,app,paylater,applepay
+        // Using: cc (credit card), dc (debit card), upi, nb (netbanking), app (wallet apps), paylater
+        payment_methods: 'cc,dc,upi,nb,app,paylater',
       },
       // Add shipping info as order notes (minimum 3 characters required, max 200)
       order_note: shippingInfo && shippingInfo.address

@@ -329,16 +329,45 @@ export default function CheckoutPage() {
         },
       }))
 
-      // Redirect to Cashfree payment page
-      // For hosted checkout, Cashfree will automatically use the payment_session_id from the order
-      if (data.payment_url) {
+      // Redirect to Cashfree hosted checkout page
+      // Users will be able to select their payment method on Cashfree's hosted page
+      if (data.payment_session_id) {
+        // Load Cashfree.js SDK from CDN and redirect to payment page
+        // This opens Cashfree's hosted checkout where users can select payment method
+        const script = document.createElement('script')
+        script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js'
+        
+        script.onload = () => {
+          try {
+            // @ts-ignore - Cashfree SDK loaded from CDN
+            const cashfree = (window as any).Cashfree
+            if (cashfree && typeof cashfree.checkout === 'function') {
+              cashfree.checkout({
+                paymentSessionId: data.payment_session_id,
+                redirectTarget: '_self', // Opens in same tab - redirect checkout
+              })
+            } else {
+              // Fallback: Direct URL redirect
+              window.location.href = data.payment_url || `https://payments.cashfree.com/orders/${orderId}`
+            }
+          } catch (error) {
+            console.error('Error opening Cashfree checkout:', error)
+            // Fallback: Direct URL redirect
+            window.location.href = data.payment_url || `https://payments.cashfree.com/orders/${orderId}`
+          }
+        }
+        
+        script.onerror = () => {
+          // Fallback: Direct URL redirect if SDK fails to load
+          window.location.href = data.payment_url || `https://payments.cashfree.com/orders/${orderId}`
+        }
+        
+        document.head.appendChild(script)
+      } else if (data.payment_url) {
+        // Fallback: Use provided payment URL
         window.location.href = data.payment_url
-      } else if (data.payment_session_id) {
-        // Fallback: Construct payment URL if payment_url not provided
-        const paymentUrl = `https://payments.cashfree.com/orders/${orderId}`
-        window.location.href = paymentUrl
       } else {
-        throw new Error('Payment URL or session ID not received from server')
+        throw new Error('Payment session ID or URL not received from server')
       }
     } catch (error: any) {
       console.error('Payment error:', error)
