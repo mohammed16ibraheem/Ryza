@@ -75,29 +75,6 @@ export default function ShippingPage() {
 
         {/* Shipping Content */}
         <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 md:p-10 space-y-6 md:space-y-8">
-          {/* Free Shipping */}
-          <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 md:p-8">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0">
-                <svg className="w-6 h-6 text-green-600 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-green-900 mb-3">
-                  {shippingSettings.freeShippingThreshold === 0
-                    ? 'Free Shipping on All Orders'
-                    : `Free Shipping on Orders Over ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}`}
-                </h2>
-                <p className="text-green-800 text-base md:text-lg leading-relaxed">
-                  {shippingSettings.freeShippingThreshold === 0
-                    ? 'Enjoy free shipping on all orders, regardless of order amount!'
-                    : `Enjoy free shipping on all orders above ₹${shippingSettings.freeShippingThreshold.toLocaleString('en-IN')}. For orders below this amount, a standard shipping fee of ₹${shippingSettings.shippingCost.toLocaleString('en-IN')} applies.`}
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Processing Time */}
           <div className="border-l-4 border-primary-600 pl-4 md:pl-6">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
