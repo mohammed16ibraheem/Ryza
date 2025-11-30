@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Open_Sans } from 'next/font/google'
+import localFont from 'next/font/local'
 import Script from 'next/script'
 import './globals.css'
 import Header from '@/components/Header'
@@ -10,6 +11,13 @@ const openSans = Open_Sans({
   weight: ['400', '500', '600', '700', '800'],
   display: 'swap',
   preload: true,
+  fallback: ['system-ui', 'arial'],
+})
+
+const betterlett = localFont({
+  src: './fonts/BetterlettRegular.otf',
+  display: 'swap',
+  variable: '--font-betterlett',
   fallback: ['system-ui', 'arial'],
 })
 
@@ -143,7 +151,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={openSans.className}>
+      <body className={`${openSans.className} ${betterlett.variable}`}>
         {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-E397H4CLQW"

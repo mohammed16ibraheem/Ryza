@@ -20,7 +20,7 @@ export default function ReturnsPage() {
               No Returns Policy
             </h2>
             <p className="text-gray-700 text-base md:text-lg leading-relaxed mb-4">
-              At <strong>Ryza</strong>, we maintain a strict <strong>no returns, no refunds, and no exchanges</strong> policy on all products. 
+              At <strong className="ryza-brand">Ryza</strong>, we maintain a strict <strong>no returns, no refunds, and no exchanges</strong> policy on all products. 
               All sales are considered final once the order has been placed and confirmed.
             </p>
             <p className="text-gray-700 text-base md:text-lg leading-relaxed">

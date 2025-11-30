@@ -20,7 +20,7 @@ export default function AboutPage() {
             </span>
           </div>
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
-            About <span className="text-primary-600">Ryza</span>
+            About <span className="ryza-brand">Ryza</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 font-light max-w-3xl mx-auto">
             The Hijab House
@@ -34,7 +34,7 @@ export default function AboutPage() {
             <div className="relative">
               <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-pink-400 to-purple-400 rounded-full"></div>
               <p className="text-lg md:text-xl text-gray-700 leading-relaxed pl-8 font-light">
-                At <span className="font-semibold text-primary-600">Ryza - The Hijab House</span>, our journey began with a simple yet powerful vision: 
+                At <span className="ryza-brand font-semibold">Ryza - The Hijab House</span>, our journey began with a simple yet powerful vision: 
                 to make modest fashion <span className="font-medium text-pink-600">elegant</span>, <span className="font-medium text-purple-600">comfortable</span>, and <span className="font-medium text-primary-600">accessible</span> for every woman.
               </p>
             </div>
@@ -43,7 +43,7 @@ export default function AboutPage() {
               <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-400 to-primary-400 rounded-full"></div>
               <p className="text-lg md:text-xl text-gray-700 leading-relaxed pl-8 font-light">
                 We believe that a hijab is more than just a piece of fabric - it is an expression 
-                of <span className="font-semibold text-pink-600">identity</span>, <span className="font-semibold text-purple-600">confidence</span>, and <span className="font-semibold text-primary-600">grace</span>. With this belief at our core, Ryza was created 
+                of <span className="font-semibold text-pink-600">identity</span>, <span className="font-semibold text-purple-600">confidence</span>, and <span className="font-semibold text-primary-600">grace</span>. With this belief at our core, <span className="ryza-brand">Ryza</span> was created 
                 to offer a complete and premium hijab experience that celebrates the beauty of 
                 modesty while embracing contemporary style.
               </p>

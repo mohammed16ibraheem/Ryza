@@ -129,7 +129,8 @@ export default function PaymentReturnPage() {
     doc.rect(0, 0, pageWidth, 40, 'F')
     
     // Logo placeholder (you can add actual logo image later)
-    doc.setTextColor(255, 255, 255)
+    // Use pink/rose color for Ryza: #CD2C58 (RGB: 205, 44, 88)
+    doc.setTextColor(205, 44, 88) // Pink/rose color
     doc.setFontSize(24)
     doc.setFont('helvetica', 'bold')
     doc.text('RYZA', margin, 25)
@@ -316,7 +317,12 @@ export default function PaymentReturnPage() {
     doc.setFontSize(8)
     doc.setTextColor(128, 128, 128)
     doc.text('Thank you for your purchase!', margin, pageHeight - 20)
+    // Use pink/rose color for Ryza brand
+    doc.setTextColor(205, 44, 88) // Pink/rose color
+    doc.setFont('helvetica', 'bold')
     doc.text('Ryza - Hijab House', margin, pageHeight - 15)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(128, 128, 128)
     doc.text('For support, contact us via Instagram or WhatsApp', margin, pageHeight - 10)
 
     // Save PDF
@@ -451,7 +457,7 @@ export default function PaymentReturnPage() {
                   sizes="(max-width: 640px) 40px, (max-width: 768px) 48px, 56px"
                 />
               </div>
-              <span className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-wide">
+              <span className="ryza-brand text-xl sm:text-2xl md:text-3xl text-white tracking-wide">
                 Ryza
               </span>
             </Link>

@@ -270,7 +270,7 @@ export default function Header() {
                 priority
               />
             </div>
-            <span className="text-xl sm:text-2xl md:text-3xl font-bold text-primary-600">
+            <span className="ryza-brand text-xl sm:text-2xl md:text-3xl">
               Ryza
             </span>
           </Link>

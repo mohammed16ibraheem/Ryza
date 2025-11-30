@@ -222,3 +222,11 @@ header img[alt="Ryza Logo"] {
   filter: brightness(0.7) contrast(1.5) saturate(1.3);
 }
 
+/* Ryza brand text styling - Betterlett font with pink/rose color */
+.ryza-brand {
+  font-family: var(--font-betterlett), 'Betterlett', system-ui, arial, sans-serif;
+  color: #CD2C58;
+  font-weight: normal;
+  letter-spacing: 0.02em;
+}
+

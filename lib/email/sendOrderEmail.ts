@@ -167,7 +167,7 @@ export async function sendOrderConfirmationEmail(
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #92487A 0%, #b85a8f 100%); padding: 30px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: 1px;">
+              <h1 style="margin: 0; color: #CD2C58; font-size: 32px; font-weight: 700; letter-spacing: 1px; font-family: 'Georgia', 'Times New Roman', serif;">
                 RYZA
               </h1>
               <p style="margin: 8px 0 0 0; color: #ffffff; font-size: 14px; opacity: 0.9;">
