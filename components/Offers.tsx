@@ -13,13 +13,6 @@ const offers = [
     price: '₹5,999',
     background: 'from-white to-primary-50',
   },
-  {
-    title: 'Hijab Styling Session',
-    description: '1-on-1 styling tips with our in-house stylist',
-    offer: 'Complimentary with orders above ₹7,000',
-    price: 'Limited slots',
-    background: 'from-white to-primary-100',
-  },
 ]
 
 export default function Offers() {
