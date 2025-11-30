@@ -17,10 +17,14 @@ export default function Hero() {
             Modest Fashion for
             <span className="block text-primary-600">Modern Women</span>
           </h1>
-          <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 text-gray-700">
-            Discover our beautiful collection of dresses, hijabs, scarves, and accessories. 
-            Modest fashion that celebrates your style and culture.
-          </p>
+          <div className="space-y-4 sm:space-y-5 mb-6 sm:mb-8">
+            <p className="text-lg sm:text-xl md:text-2xl text-gray-800 font-semibold italic leading-relaxed">
+              Modesty isn't about hiding; it's about choosing to shine with grace.
+            </p>
+            <p className="text-base sm:text-lg md:text-xl text-gray-700 leading-relaxed">
+              Discover the beauty of elegant hijabs and timeless modest fashion through a collection crafted for comfort, confidence, and style.
+            </p>
+          </div>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <Link
               href="/products"
