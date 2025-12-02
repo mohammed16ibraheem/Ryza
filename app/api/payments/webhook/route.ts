@@ -174,30 +174,30 @@ export async function POST(request: NextRequest) {
           cf_order_id: cashfreeOrderId, // Cashfree Order ID
         }
 
-        // Retrieve shipping info from customer_details and order_note
-        // Extract from customer name (first name, last name)
-        const customerNameParts = (customerDetails.customer_name || '').split(' ')
+        // Retrieve shipping info from order_tags (primary source) and customer_details (fallback)
         let shippingInfo = {
-          firstName: customerNameParts[0] || customerDetails.firstName || '',
-          lastName: customerNameParts.slice(1).join(' ') || customerDetails.lastName || '',
-          address: customerDetails.address || body?.data?.order?.order_note || '',
-          location: customerDetails.location || customerDetails.city || orderTags.shipping_city || '',
-          mobileNumber: customerDetails.customer_phone || customerDetails.phone || '',
-          landmark: customerDetails.landmark || '',
-          pinCode: customerDetails.pinCode || customerDetails.pincode || orderTags.shipping_pincode || '',
+          firstName: orderTags.shipping_firstname || customerDetails.customer_name?.split(' ')[0] || customerDetails.firstName || '',
+          lastName: orderTags.shipping_lastname || customerDetails.customer_name?.split(' ').slice(1).join(' ') || customerDetails.lastName || '',
+          address: orderTags.shipping_address || customerDetails.address || '',
+          location: orderTags.shipping_city || customerDetails.location || customerDetails.city || '',
+          mobileNumber: orderTags.shipping_mobile || customerDetails.customer_phone || customerDetails.phone || '',
+          landmark: orderTags.shipping_landmark || customerDetails.landmark || '',
+          pinCode: orderTags.shipping_pincode || customerDetails.pinCode || customerDetails.pincode || '',
         }
         
-        // Try to extract shipping info from order_note if available
-        const orderNote = body?.data?.order?.order_note || ''
-        if (orderNote && orderNote.includes('Ship:')) {
-          // Parse order_note format: "Ship: FirstName LastName, Location, PinCode"
-          const shipMatch = orderNote.match(/Ship:\s*([^,]+),\s*([^,]+),\s*(\d+)/)
-          if (shipMatch) {
-            const nameParts = shipMatch[1].trim().split(' ')
-            shippingInfo.firstName = nameParts[0] || shippingInfo.firstName
-            shippingInfo.lastName = nameParts.slice(1).join(' ') || shippingInfo.lastName
-            shippingInfo.location = shipMatch[2].trim() || shippingInfo.location
-            shippingInfo.pinCode = shipMatch[3].trim() || shippingInfo.pinCode
+        // Fallback: Try to extract shipping info from order_note if order_tags are empty
+        if (!shippingInfo.firstName && !shippingInfo.lastName) {
+          const orderNote = body?.data?.order?.order_note || ''
+          if (orderNote && orderNote.includes('Ship:')) {
+            // Parse order_note format: "Ship: FirstName LastName, Location, PinCode"
+            const shipMatch = orderNote.match(/Ship:\s*([^,]+),\s*([^,]+),\s*(\d+)/)
+            if (shipMatch) {
+              const nameParts = shipMatch[1].trim().split(' ')
+              shippingInfo.firstName = nameParts[0] || shippingInfo.firstName
+              shippingInfo.lastName = nameParts.slice(1).join(' ') || shippingInfo.lastName
+              shippingInfo.location = shipMatch[2].trim() || shippingInfo.location
+              shippingInfo.pinCode = shipMatch[3].trim() || shippingInfo.pinCode
+            }
           }
         }
 

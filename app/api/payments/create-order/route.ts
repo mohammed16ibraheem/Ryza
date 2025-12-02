@@ -121,23 +121,54 @@ export async function POST(request: NextRequest) {
     }) : []
 
     // Prepare order tags for metadata (max 10 tags, max 256 chars per value)
-    // Store only short identifiers to avoid exceeding Cashfree's 256 char limit
+    // Store shipping and cart info in order_tags if they fit within 256 chars
     const orderTags: Record<string, string> = {}
+    
+    // Store cart summary
     if (cart && Array.isArray(cart)) {
       const totalItems = cart.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0)
       orderTags.total_items = totalItems.toString()
       orderTags.cart_count = cart.length.toString()
-    }
-    if (shippingInfo?.location) {
-      // Truncate to ensure under 256 chars
-      orderTags.shipping_city = shippingInfo.location.substring(0, 50)
-    }
-    if (shippingInfo?.pinCode) {
-      orderTags.shipping_pincode = shippingInfo.pinCode.substring(0, 10)
+      
+      // Store compact cart data (product IDs and quantities) if under 256 chars
+      const cartCompact = cart.map((item: any) => `${item.id}:${item.quantity || 1}`).join(',')
+      if (cartCompact.length <= 256) {
+        orderTags.cart_ids = cartCompact
+      }
     }
     
-    // Store cart and shipping data in order_note (limited to 200 chars, so store minimal info)
-    // Full data will be retrieved from cart_details in webhook
+    // Store shipping info in order_tags (each field under 256 chars)
+    if (shippingInfo) {
+      if (shippingInfo.firstName && shippingInfo.firstName.length <= 256) {
+        orderTags.shipping_firstname = shippingInfo.firstName
+      }
+      if (shippingInfo.lastName && shippingInfo.lastName.length <= 256) {
+        orderTags.shipping_lastname = shippingInfo.lastName
+      }
+      // Store mobile number - only 10 digits, always under 256 chars
+      if (shippingInfo.mobileNumber) {
+        // Extract only digits and ensure it's exactly 10 digits
+        const mobileDigits = shippingInfo.mobileNumber.replace(/\D/g, '')
+        if (mobileDigits.length === 10) {
+          orderTags.shipping_mobile = mobileDigits
+        }
+      }
+      if (shippingInfo.location && shippingInfo.location.length <= 256) {
+        orderTags.shipping_city = shippingInfo.location
+      }
+      if (shippingInfo.pinCode && shippingInfo.pinCode.length <= 256) {
+        orderTags.shipping_pincode = shippingInfo.pinCode
+      }
+      if (shippingInfo.landmark && shippingInfo.landmark.length <= 256) {
+        orderTags.shipping_landmark = shippingInfo.landmark
+      }
+      // Store address (might be long, so truncate if needed)
+      if (shippingInfo.address) {
+        orderTags.shipping_address = shippingInfo.address.substring(0, 256)
+      }
+    }
+    
+    // Store cart and shipping data in order_note as backup (limited to 200 chars)
     let orderNote = 'Order from Ryza'
     if (shippingInfo && shippingInfo.address) {
       // Store minimal shipping info in order_note (max 200 chars)
