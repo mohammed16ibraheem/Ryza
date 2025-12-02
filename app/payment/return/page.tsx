@@ -447,19 +447,29 @@ export default function PaymentReturnPage() {
           {/* Logo Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 text-center">
             <Link href="/" className="inline-flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity">
-              <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 flex-shrink-0">
+              {/* Logo Image */}
+              <div className="relative w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0 mb-1">
                 <Image
                   src="/logo.png"
                   alt="Ryza Logo"
                   fill
                   className="object-contain"
+                  style={{ 
+                    backgroundColor: 'transparent',
+                  }}
                   priority
-                  sizes="(max-width: 640px) 40px, (max-width: 768px) 48px, 56px"
+                  sizes="(max-width: 640px) 40px, (max-width: 768px) 48px, (max-width: 1024px) 56px, 64px"
                 />
               </div>
-              <span className="ryza-brand text-xl sm:text-2xl md:text-3xl text-white tracking-wide">
-                Ryza
-              </span>
+              {/* Logo Text */}
+              <div className="flex flex-col items-center">
+                <span className="ryza-brand text-base sm:text-lg md:text-xl lg:text-2xl text-white tracking-wide leading-tight">
+                  Ryza
+                </span>
+                <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-white/90 font-medium mt-0.5 sm:mt-1">
+                  The Hijab House
+                </span>
+              </div>
             </Link>
           </div>
 

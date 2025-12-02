@@ -252,27 +252,33 @@ export default function Header() {
           : 'bg-white/95 backdrop-blur-sm'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 md:h-20">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-16 md:h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2 sm:space-x-3 touch-manipulation group hover:opacity-90 transition-opacity ml-6 sm:ml-8 md:ml-10">
+          <Link href="/" className="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3 touch-manipulation group hover:opacity-90 transition-opacity ml-2 sm:ml-4 md:ml-6 lg:ml-8">
+            {/* Logo Image - Left Side */}
             <div className="relative flex-shrink-0">
               <Image
                 src="/logo.png"
                 alt="Ryza Logo"
                 width={64}
                 height={64}
-                className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 object-contain"
+                className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 object-contain"
                 style={{ 
                   backgroundColor: 'transparent',
-                  filter: 'brightness(0.7) contrast(1.5) saturate(1.3)'
                 }}
                 priority
               />
             </div>
-            <span className="ryza-brand text-xl sm:text-2xl md:text-3xl">
-              Ryza
-            </span>
+            {/* Logo Text - Right Side, Stacked Vertically */}
+            <div className="flex flex-col">
+              <span className="ryza-brand text-base sm:text-lg md:text-xl lg:text-2xl leading-tight">
+                Ryza
+              </span>
+              <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-xs text-gray-600 font-medium mt-0.5 sm:mt-1">
+                The Hijab House
+              </span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}

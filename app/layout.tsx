@@ -14,10 +14,10 @@ const openSans = Open_Sans({
   fallback: ['system-ui', 'arial'],
 })
 
-const betterlett = localFont({
-  src: './fonts/BetterlettRegular.otf',
+const inkedSkin = localFont({
+  src: './fonts/InkedSkinPersonalUse-qLld.ttf',
   display: 'swap',
-  variable: '--font-betterlett',
+  variable: '--font-inkedskin',
   fallback: ['system-ui', 'arial'],
 })
 
@@ -151,7 +151,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={`${openSans.className} ${betterlett.variable}`}>
+      <body className={`${openSans.className} ${inkedSkin.variable}`}>
         {/* Google Analytics */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-E397H4CLQW"
