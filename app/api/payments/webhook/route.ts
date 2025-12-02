@@ -174,48 +174,36 @@ export async function POST(request: NextRequest) {
           cf_order_id: cashfreeOrderId, // Cashfree Order ID
         }
 
-        // Retrieve shipping info from order_tags (base64 encoded JSON)
+        // Retrieve shipping info from customer_details and order_note
+        // Extract from customer name (first name, last name)
+        const customerNameParts = (customerDetails.customer_name || '').split(' ')
         let shippingInfo = {
-          firstName: customerDetails.customer_name?.split(' ')[0] || customerDetails.firstName || '',
-          lastName: customerDetails.customer_name?.split(' ').slice(1).join(' ') || customerDetails.lastName || '',
-          address: customerDetails.address || '',
+          firstName: customerNameParts[0] || customerDetails.firstName || '',
+          lastName: customerNameParts.slice(1).join(' ') || customerDetails.lastName || '',
+          address: customerDetails.address || body?.data?.order?.order_note || '',
           location: customerDetails.location || customerDetails.city || orderTags.shipping_city || '',
           mobileNumber: customerDetails.customer_phone || customerDetails.phone || '',
           landmark: customerDetails.landmark || '',
           pinCode: customerDetails.pinCode || customerDetails.pincode || orderTags.shipping_pincode || '',
         }
         
-        // Try to decode shipping data from order_tags
-        if (orderTags.shipping_data) {
-          try {
-            const decodedShipping = JSON.parse(Buffer.from(orderTags.shipping_data, 'base64').toString('utf-8'))
-            shippingInfo = {
-              firstName: decodedShipping.firstName || shippingInfo.firstName,
-              lastName: decodedShipping.lastName || shippingInfo.lastName,
-              address: decodedShipping.address || shippingInfo.address,
-              location: decodedShipping.location || shippingInfo.location,
-              mobileNumber: decodedShipping.mobileNumber || shippingInfo.mobileNumber,
-              landmark: decodedShipping.landmark || shippingInfo.landmark,
-              pinCode: decodedShipping.pinCode || shippingInfo.pinCode,
-            }
-          } catch (err) {
-            console.warn('Error decoding shipping data from order_tags:', err)
+        // Try to extract shipping info from order_note if available
+        const orderNote = body?.data?.order?.order_note || ''
+        if (orderNote && orderNote.includes('Ship:')) {
+          // Parse order_note format: "Ship: FirstName LastName, Location, PinCode"
+          const shipMatch = orderNote.match(/Ship:\s*([^,]+),\s*([^,]+),\s*(\d+)/)
+          if (shipMatch) {
+            const nameParts = shipMatch[1].trim().split(' ')
+            shippingInfo.firstName = nameParts[0] || shippingInfo.firstName
+            shippingInfo.lastName = nameParts.slice(1).join(' ') || shippingInfo.lastName
+            shippingInfo.location = shipMatch[2].trim() || shippingInfo.location
+            shippingInfo.pinCode = shipMatch[3].trim() || shippingInfo.pinCode
           }
         }
 
-        // Retrieve cart items from order_tags (base64 encoded JSON)
+        // Retrieve cart items from cart_details (Cashfree provides this)
         let cartItems: any[] = []
-        if (orderTags.cart_data) {
-          try {
-            const decodedCart = JSON.parse(Buffer.from(orderTags.cart_data, 'base64').toString('utf-8'))
-            cartItems = Array.isArray(decodedCart) ? decodedCart : []
-          } catch (err) {
-            console.warn('Error decoding cart data from order_tags:', err)
-          }
-        }
-        
-        // Fallback: Try to get cart from cart_details if available
-        if (cartItems.length === 0 && body?.data?.order?.cart_details?.cart_items) {
+        if (body?.data?.order?.cart_details?.cart_items && Array.isArray(body.data.order.cart_details.cart_items)) {
           cartItems = body.data.order.cart_details.cart_items.map((item: any) => ({
             id: item.item_id || '',
             name: item.item_name || 'Product',
@@ -227,6 +215,21 @@ export async function POST(request: NextRequest) {
             selectedColor: '',
             description: item.item_description || '',
           }))
+        }
+        
+        // If no cart items found, create a basic entry from order amount
+        if (cartItems.length === 0 && orderAmount) {
+          cartItems = [{
+            id: orderId,
+            name: 'Order Items',
+            price: orderAmount,
+            image: '',
+            images: [],
+            quantity: 1,
+            selectedSize: '',
+            selectedColor: '',
+            description: `Order ${orderId}`,
+          }]
         }
 
         // Send order confirmation email with complete data
