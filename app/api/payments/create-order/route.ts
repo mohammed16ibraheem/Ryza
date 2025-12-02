@@ -121,6 +121,7 @@ export async function POST(request: NextRequest) {
     }) : []
 
     // Prepare order tags for metadata (max 10 tags)
+    // Store cart items and shipping info in order_tags for webhook retrieval
     const orderTags: Record<string, string> = {}
     if (cart && Array.isArray(cart)) {
       orderTags.total_items = cart.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0).toString()
@@ -130,6 +131,47 @@ export async function POST(request: NextRequest) {
     }
     if (shippingInfo?.pinCode) {
       orderTags.shipping_pincode = shippingInfo.pinCode
+    }
+    
+    // Store full cart items with images as JSON (base64 encoded to avoid special characters)
+    if (cart && Array.isArray(cart) && cart.length > 0) {
+      try {
+        const cartData = JSON.stringify(cart.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          image: item.image,
+          images: item.images || (item.image ? [item.image] : []), // Support multiple images
+          quantity: item.quantity || 1,
+          selectedSize: item.selectedSize,
+          selectedColor: item.selectedColor,
+          selectedImageIndex: item.selectedImageIndex,
+          description: item.description,
+          weight: item.weight,
+        })))
+        // Base64 encode to store in order_tags (avoids special character issues)
+        orderTags.cart_data = Buffer.from(cartData).toString('base64')
+      } catch (err) {
+        console.error('Error encoding cart data:', err)
+      }
+    }
+    
+    // Store shipping info as JSON (base64 encoded)
+    if (shippingInfo) {
+      try {
+        const shippingData = JSON.stringify({
+          firstName: shippingInfo.firstName || '',
+          lastName: shippingInfo.lastName || '',
+          address: shippingInfo.address || '',
+          location: shippingInfo.location || '',
+          mobileNumber: shippingInfo.mobileNumber || '',
+          landmark: shippingInfo.landmark || '',
+          pinCode: shippingInfo.pinCode || '',
+        })
+        orderTags.shipping_data = Buffer.from(shippingData).toString('base64')
+      } catch (err) {
+        console.error('Error encoding shipping data:', err)
+      }
     }
 
     // Set order expiry time to 24 hours from now

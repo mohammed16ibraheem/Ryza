@@ -11,10 +11,11 @@ function getResendInstance() {
 }
 
 interface OrderItem {
-  id: number
+  id: number | string
   name: string
   price: number
   image: string
+  images?: string[] // Support multiple images per product
   quantity: number
   selectedSize?: string
   selectedColor?: string
@@ -44,7 +45,8 @@ interface OrderDetails {
     customer_phone?: string
     customer_email?: string
   }
-  cf_payment_id?: string
+  cf_payment_id?: string // Transaction ID
+  cf_order_id?: string // Cashfree Order ID
 }
 
 // Helper function to escape HTML and prevent XSS
@@ -94,21 +96,24 @@ export async function sendOrderConfirmationEmail(
       minute: '2-digit',
     })
 
-    // Build product list HTML
+    // Build product list HTML with support for multiple images per product
     const productListHTML = cartItems.map((item, index) => {
       const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(String(item.price)) || 0
       const itemQuantity = item.quantity || 1
       const itemTotal = itemPrice * itemQuantity
       
-      // For email deliverability, use site domain for images
-      // If image is from GitHub, we'll use it directly (Resend will handle it)
-      // For better deliverability, consider proxying images through your domain
-      let imageUrl = item.image?.startsWith('http') 
-        ? item.image 
-        : `${siteUrl}${item.image?.startsWith('/') ? '' : '/'}${item.image || '/placeholder.jpg'}`
+      // Get all images for this product (support multiple images)
+      const productImages = item.images && Array.isArray(item.images) && item.images.length > 0
+        ? item.images
+        : (item.image ? [item.image] : [])
       
-      // Note: GitHub raw URLs work but for best deliverability, 
-      // consider using a CDN subdomain like cdn.theryza.com or images.theryza.com
+      // Process image URLs for email deliverability
+      const processedImages = productImages.map((img: string) => {
+        if (img?.startsWith('http')) {
+          return img
+        }
+        return `${siteUrl}${img?.startsWith('/') ? '' : '/'}${img || '/placeholder.jpg'}`
+      })
 
       // Escape user input to prevent XSS
       const escapedName = escapeHtml(item.name)
@@ -117,19 +122,42 @@ export async function sendOrderConfirmationEmail(
       const escapedSize = item.selectedSize ? escapeHtml(item.selectedSize) : ''
       const escapedColor = item.selectedColor ? escapeHtml(item.selectedColor) : ''
       
+      // Build multiple images HTML (show up to 4 images in a grid)
+      const imagesHTML = processedImages.length > 0 ? `
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+          ${processedImages.slice(0, 4).map((imageUrl: string, imgIndex: number) => `
+            <div style="width: ${processedImages.length > 1 ? '80px' : '120px'}; height: ${processedImages.length > 1 ? '80px' : '120px'}; flex-shrink: 0; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
+              <img 
+                src="${escapeHtml(imageUrl)}" 
+                alt="${escapedName || 'Product'} - Image ${imgIndex + 1}" 
+                style="width: 100%; height: 100%; object-fit: cover;"
+                onerror="this.src='${siteUrl}/placeholder.jpg'"
+              />
+            </div>
+          `).join('')}
+          ${processedImages.length > 4 ? `
+            <div style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; background-color: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; color: #6b7280; font-size: 12px; font-weight: 600;">
+              +${processedImages.length - 4} more
+            </div>
+          ` : ''}
+        </div>
+      ` : ''
+      
       return `
         <tr style="border-bottom: 1px solid #e5e7eb;">
           <td style="padding: 20px 0; vertical-align: top;">
-            <div style="display: flex; gap: 15px;">
-              <div style="width: 80px; height: 80px; flex-shrink: 0;">
-                <img 
-                  src="${escapeHtml(imageUrl)}" 
-                  alt="${escapedName || 'Product'}" 
-                  style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;"
-                  onerror="this.src='${siteUrl}/placeholder.jpg'"
-                />
-              </div>
-              <div style="flex: 1;">
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+              ${processedImages.length > 0 ? `
+                <div style="width: 120px; height: 120px; flex-shrink: 0;">
+                  <img 
+                    src="${escapeHtml(processedImages[0])}" 
+                    alt="${escapedName || 'Product'}" 
+                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb;"
+                    onerror="this.src='${siteUrl}/placeholder.jpg'"
+                  />
+                </div>
+              ` : ''}
+              <div style="flex: 1; min-width: 200px;">
                 <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600; color: #111827;">
                   ${escapedName || 'Product'}
                 </h3>
@@ -137,11 +165,17 @@ export async function sendOrderConfirmationEmail(
                 ${escapedWeight ? `<p style="margin: 0 0 8px 0; font-size: 12px; color: #9ca3af;">Weight: ${escapedWeight}</p>` : ''}
                 ${escapedSize ? `<p style="margin: 0 0 4px 0; font-size: 12px; color: #6b7280;">Size: ${escapedSize}</p>` : ''}
                 ${escapedColor ? `<p style="margin: 0 0 4px 0; font-size: 12px; color: #6b7280;">Color: ${escapedColor}</p>` : ''}
-                <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 14px; color: #374151;">
-                  <span>Price: ₹${itemPrice.toLocaleString('en-IN')}</span>
-                  <span>Qty: ${itemQuantity}</span>
-                  <span style="font-weight: 600;">Total: ₹${itemTotal.toLocaleString('en-IN')}</span>
+                <div style="margin-top: 8px; padding: 12px 0; border-top: 1px solid #e5e7eb;">
+                  <div style="display: flex; gap: 15px; margin-bottom: 8px; font-size: 14px; color: #374151; flex-wrap: wrap;">
+                    <span>Unit Price: ₹${itemPrice.toLocaleString('en-IN')}</span>
+                    <span>Quantity: ${itemQuantity}</span>
+                  </div>
+                  <div style="display: flex; align-items: baseline; gap: 4px; font-size: 15px; color: #111827; font-weight: 600;">
+                    <span>Total for this item: ₹</span>
+                    <span style="font-weight: 700; font-size: 16px;">${itemTotal.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
+                ${imagesHTML}
               </div>
             </div>
           </td>
@@ -202,6 +236,12 @@ export async function sendOrderConfirmationEmail(
                   <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 40%;">Order ID:</td>
                   <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">${escapeHtml(orderDetails.order_id)}</td>
                 </tr>
+                ${orderDetails.cf_order_id ? `
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Cashfree Order ID:</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-family: monospace; font-weight: 600;">${escapeHtml(String(orderDetails.cf_order_id))}</td>
+                </tr>
+                ` : ''}
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Order Date:</td>
                   <td style="padding: 8px 0; color: #111827; font-size: 14px;">${orderDate}</td>
@@ -213,7 +253,7 @@ export async function sendOrderConfirmationEmail(
                 ${orderDetails.cf_payment_id ? `
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Transaction ID:</td>
-                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-family: monospace;">${escapeHtml(String(orderDetails.cf_payment_id))}</td>
+                  <td style="padding: 8px 0; color: #111827; font-size: 14px; font-family: monospace; font-weight: 600;">${escapeHtml(String(orderDetails.cf_payment_id))}</td>
                 </tr>
                 ` : ''}
                 ${orderDetails.payment_method ? `
@@ -230,11 +270,17 @@ export async function sendOrderConfirmationEmail(
           <tr>
             <td style="padding: 0 30px 30px;">
               <h3 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: #111827; border-bottom: 2px solid #92487A; padding-bottom: 10px;">
-                Product Details
+                Product Details ${cartItems.length > 0 ? `(${cartItems.length} ${cartItems.length === 1 ? 'item' : 'items'})` : ''}
               </h3>
-              <table role="presentation" style="width: 100%; border-collapse: collapse;">
-                ${productListHTML}
-              </table>
+              ${cartItems.length === 0 ? `
+                <p style="color: #6b7280; font-size: 14px; text-align: center; padding: 20px;">
+                  No products found in this order.
+                </p>
+              ` : `
+                <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                  ${productListHTML}
+                </table>
+              `}
             </td>
           </tr>
 

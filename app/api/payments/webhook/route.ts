@@ -3,6 +3,31 @@ import { sendOrderConfirmationEmail } from '@/lib/email/sendOrderEmail'
 
 export const dynamic = 'force-dynamic'
 
+// In-memory cache to prevent duplicate emails (clears on server restart)
+// In production, consider using Redis or database for persistence
+const sentEmailsCache = new Map<string, number>()
+
+// Clean up old entries (older than 1 hour) to prevent memory leak
+function cleanupOldEntries() {
+  const oneHourAgo = Date.now() - 60 * 60 * 1000
+  for (const [orderId, timestamp] of sentEmailsCache.entries()) {
+    if (timestamp < oneHourAgo) {
+      sentEmailsCache.delete(orderId)
+    }
+  }
+}
+
+// Check if email was already sent for this order
+function hasEmailBeenSent(orderId: string): boolean {
+  cleanupOldEntries()
+  return sentEmailsCache.has(orderId)
+}
+
+// Mark email as sent for this order
+function markEmailAsSent(orderId: string) {
+  sentEmailsCache.set(orderId, Date.now())
+}
+
 // Helper function to verify webhook signature (optional but recommended)
 function verifyWebhookSignature(body: string, signature: string | null): boolean {
   // If webhook secret is configured, verify signature
@@ -65,6 +90,11 @@ export async function POST(request: NextRequest) {
                      body?.data?.payment?.payment_id ||
                      body?.data?.paymentId ||
                      body?.cf_payment_id
+    const cashfreeOrderId = body?.data?.order?.cf_order_id || 
+                           body?.data?.order?.order_id ||
+                           body?.data?.cf_order_id ||
+                           body?.cf_order_id ||
+                           orderId // Fallback to order_id if cf_order_id not available
     const paymentMethod = body?.data?.payment?.payment_method || 
                          body?.data?.paymentMethod ||
                          body?.payment_method
@@ -75,59 +105,169 @@ export async function POST(request: NextRequest) {
                           body?.data?.customerDetails ||
                           body?.customer_details || 
                           {}
+    
+    // Extract order tags (contains cart and shipping data)
+    const orderTags = body?.data?.order?.order_tags || 
+                     body?.data?.orderTags ||
+                     body?.order_tags || 
+                     {}
 
-    // Check if payment is successful (check both event type and payment status)
-    const isSuccess = 
-      isSuccessEvent ||
+    // STRICT CHECK: Payment is successful ONLY if:
+    // 1. Event type is PAYMENT_SUCCESS, AND
+    // 2. Payment status is SUCCESS or PAID, AND
+    // 3. Order ID exists
+    // This ensures email is sent ONLY on confirmed successful payment
+    const isSuccessEventType = isSuccessEvent
+    const isSuccessStatus = 
       paymentStatus === 'SUCCESS' || 
       paymentStatus === 'PAID' ||
       body?.data?.order?.order_status === 'PAID' ||
       body?.data?.orderStatus === 'PAID'
+    
+    // Payment is successful ONLY if both event type AND status indicate success
+    const isSuccess = isSuccessEventType && isSuccessStatus && orderId
+    
+    // Explicitly check for failed/pending statuses to prevent email
+    const isFailed = isFailedEvent || 
+                    paymentStatus === 'FAILED' || 
+                    paymentStatus === 'FAILURE' ||
+                    paymentStatus === 'PENDING' ||
+                    paymentStatus === 'CANCELLED'
+    
+    // Log payment status for debugging
+    console.log('Payment status check:', {
+      orderId,
+      eventType,
+      paymentStatus,
+      isSuccessEventType,
+      isSuccessStatus,
+      isSuccess,
+      isFailed,
+      willSendEmail: isSuccess && !isFailed
+    })
 
-    // Handle successful payment
-    if (isSuccess && orderId) {
-      // Payment successful - send order confirmation email
+    // Handle successful payment - EMAIL SENT ONLY HERE
+    if (isSuccess && !isFailed && orderId) {
+      // Check if email was already sent for this order (prevent duplicates)
+      if (hasEmailBeenSent(orderId)) {
+        console.log(`⚠️ SKIPPED: Email already sent for order ${orderId} - Preventing duplicate email`)
+        return NextResponse.json({
+          success: true,
+          message: 'Webhook processed successfully - Email already sent (duplicate prevented)',
+          order_id: orderId,
+          payment_status: paymentStatus,
+          email_sent: false,
+          reason: 'duplicate_prevented'
+        })
+      }
+
+      // Payment confirmed successful - send order confirmation email
+      console.log(`✅ CONFIRMED: Payment successful for order ${orderId} - Sending email...`)
       try {
         const orderDetails = {
           order_id: orderId,
           order_amount: orderAmount || 0,
           payment_status: paymentStatus || 'SUCCESS',
           payment_method: paymentMethod,
-          cf_payment_id: paymentId,
+          cf_payment_id: paymentId, // Transaction ID
+          cf_order_id: cashfreeOrderId, // Cashfree Order ID
         }
 
-        const shippingInfo = {
+        // Retrieve shipping info from order_tags (base64 encoded JSON)
+        let shippingInfo = {
           firstName: customerDetails.customer_name?.split(' ')[0] || customerDetails.firstName || '',
           lastName: customerDetails.customer_name?.split(' ').slice(1).join(' ') || customerDetails.lastName || '',
           address: customerDetails.address || '',
-          location: customerDetails.location || customerDetails.city || '',
+          location: customerDetails.location || customerDetails.city || orderTags.shipping_city || '',
           mobileNumber: customerDetails.customer_phone || customerDetails.phone || '',
           landmark: customerDetails.landmark || '',
-          pinCode: customerDetails.pinCode || customerDetails.pincode || '',
+          pinCode: customerDetails.pinCode || customerDetails.pincode || orderTags.shipping_pincode || '',
+        }
+        
+        // Try to decode shipping data from order_tags
+        if (orderTags.shipping_data) {
+          try {
+            const decodedShipping = JSON.parse(Buffer.from(orderTags.shipping_data, 'base64').toString('utf-8'))
+            shippingInfo = {
+              firstName: decodedShipping.firstName || shippingInfo.firstName,
+              lastName: decodedShipping.lastName || shippingInfo.lastName,
+              address: decodedShipping.address || shippingInfo.address,
+              location: decodedShipping.location || shippingInfo.location,
+              mobileNumber: decodedShipping.mobileNumber || shippingInfo.mobileNumber,
+              landmark: decodedShipping.landmark || shippingInfo.landmark,
+              pinCode: decodedShipping.pinCode || shippingInfo.pinCode,
+            }
+          } catch (err) {
+            console.warn('Error decoding shipping data from order_tags:', err)
+          }
         }
 
-        // Send order confirmation email
-        await sendOrderConfirmationEmail(
+        // Retrieve cart items from order_tags (base64 encoded JSON)
+        let cartItems: any[] = []
+        if (orderTags.cart_data) {
+          try {
+            const decodedCart = JSON.parse(Buffer.from(orderTags.cart_data, 'base64').toString('utf-8'))
+            cartItems = Array.isArray(decodedCart) ? decodedCart : []
+          } catch (err) {
+            console.warn('Error decoding cart data from order_tags:', err)
+          }
+        }
+        
+        // Fallback: Try to get cart from cart_details if available
+        if (cartItems.length === 0 && body?.data?.order?.cart_details?.cart_items) {
+          cartItems = body.data.order.cart_details.cart_items.map((item: any) => ({
+            id: item.item_id || '',
+            name: item.item_name || 'Product',
+            price: item.item_original_unit_price || item.item_discounted_unit_price || 0,
+            image: item.item_image_url || '',
+            images: item.item_image_url ? [item.item_image_url] : [],
+            quantity: item.item_quantity || 1,
+            selectedSize: '',
+            selectedColor: '',
+            description: item.item_description || '',
+          }))
+        }
+
+        // Send order confirmation email with complete data
+        const emailResult = await sendOrderConfirmationEmail(
           orderDetails,
           shippingInfo,
-          [] // Cart items - would need to be stored/retrieved
+          cartItems
         )
 
-        console.log(`✅ Payment successful - Order confirmation email sent for order ${orderId}`)
+        if (emailResult.success) {
+          // Mark email as sent to prevent duplicates
+          markEmailAsSent(orderId)
+          console.log(`✅ SUCCESS: Order confirmation email sent for order ${orderId} with ${cartItems.length} items - Email marked as sent`)
+        } else {
+          console.error(`❌ ERROR: Failed to send order confirmation email for order ${orderId}:`, emailResult.error)
+          // Don't mark as sent if email failed, so it can be retried
+        }
       } catch (emailError) {
-        console.error('Error sending order confirmation email:', emailError)
-        // Don't fail webhook if email fails
+        console.error('❌ ERROR: Exception while sending order confirmation email:', emailError)
+        // Don't fail webhook if email fails, but log the error
+        // Don't mark as sent if exception occurred
       }
     } 
-    // Handle failed payment
-    else if (isFailedEvent || paymentStatus === 'FAILED' || paymentStatus === 'FAILURE') {
-      console.log(`❌ Payment failed for order ${orderId}:`, {
+    // Handle failed/pending/cancelled payment - NO EMAIL SENT
+    else if (isFailed) {
+      console.log(`❌ SKIPPED: Payment not successful for order ${orderId} - NO EMAIL SENT:`, {
         payment_status: paymentStatus,
+        event_type: eventType,
         payment_id: paymentId,
         payment_method: paymentMethod,
         failure_reason: body?.data?.payment?.payment_message || body?.data?.failureReason || body?.failureReason,
       })
-      // You can add additional failed payment handling here (e.g., notify admin, update database, etc.)
+      // No email sent for failed/pending/cancelled payments
+    }
+    // Handle other cases (pending, unknown status) - NO EMAIL SENT
+    else {
+      console.log(`⚠️ SKIPPED: Payment status unclear for order ${orderId} - NO EMAIL SENT:`, {
+        payment_status: paymentStatus,
+        event_type: eventType,
+        order_id: orderId,
+      })
+      // No email sent if payment status is unclear
     }
 
     // Always return success to Cashfree (even if email fails)
