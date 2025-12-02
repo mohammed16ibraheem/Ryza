@@ -10,11 +10,12 @@ const sentEmailsCache = new Map<string, number>()
 // Clean up old entries (older than 1 hour) to prevent memory leak
 function cleanupOldEntries() {
   const oneHourAgo = Date.now() - 60 * 60 * 1000
-  for (const [orderId, timestamp] of sentEmailsCache.entries()) {
+  // Use forEach for compatibility with TypeScript compilation
+  sentEmailsCache.forEach((timestamp, orderId) => {
     if (timestamp < oneHourAgo) {
       sentEmailsCache.delete(orderId)
     }
-  }
+  })
 }
 
 // Check if email was already sent for this order
