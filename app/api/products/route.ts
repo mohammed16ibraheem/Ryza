@@ -134,6 +134,22 @@ async function saveProductsToStorage(products: any[]): Promise<void> {
   )
 }
 
+async function waitForProductDeletion(productId: string, maxAttempts = 5, delayMs = 700): Promise<boolean> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const verifyProducts = await getProductsFromStorage()
+    const productStillExists = verifyProducts.some((p: any) => p.id === productId)
+    if (!productStillExists) {
+      return true
+    }
+
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  }
+
+  return false
+}
+
 // GET - Fetch all products or filter by category
 export async function GET(request: NextRequest) {
   try {
@@ -297,22 +313,23 @@ export async function DELETE(request: NextRequest) {
 
     console.log(`Deleted product ${productId} and ${deletedFiles.length} associated files from GitHub`)
 
-    // Verify the product is actually removed from the list
-    const verifyProducts = await getProductsFromStorage()
-    const productStillExists = verifyProducts.some((p: any) => p.id === productId)
-    if (productStillExists) {
-      console.error(`Product ${productId} still exists after deletion attempt`)
-      return NextResponse.json({ 
-        success: false,
-        error: 'Product deletion failed - product still exists in storage'
-      }, { status: 500 })
+    // GitHub raw/API reads can lag briefly after commit.
+    // Retry verification instead of failing immediately.
+    const isDeleted = await waitForProductDeletion(productId)
+    if (!isDeleted) {
+      console.warn(
+        `Deletion for ${productId} not yet visible during verification window; returning success to avoid false failure`
+      )
     }
 
     return NextResponse.json({ 
       success: true,
       deletedFiles: deletedFiles.length,
-      message: `Product and ${deletedFiles.length} associated files deleted permanently from GitHub`,
-      deletedFilesCount: deletedFiles.length
+      message: isDeleted
+        ? `Product and ${deletedFiles.length} associated files deleted permanently from GitHub`
+        : `Delete request accepted. Product removal may take a few seconds to reflect.`,
+      deletedFilesCount: deletedFiles.length,
+      verificationDelayed: !isDeleted
     })
   } catch (error) {
     console.error('Error deleting product:', error)
