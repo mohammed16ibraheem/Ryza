@@ -1,17 +1,1 @@
-[
-  {
-    "id": "ad88c720-e659-42e6-83c8-a9076aec2108",
-    "name": "Ball pin in black ",
-    "title": "Ball pin in black ",
-    "description": "Loop pins and ball pins is used to style your hijab ",
-    "price": 110,
-    "discount": "10",
-    "category": "Hijabs",
-    "subCategory": "Accessory",
-    "images": [
-      "/api/images/public/images/Hijabs/Hijab-Essentials/1778146166261_0_1000573627.jpg",
-      "/api/images/public/images/Hijabs/Hijab-Essentials/1778146166262_1_1000573660.jpg"
-    ],
-    "folderPath": "images/Hijabs/Hijab-Essentials"
-  }
-]
+[]
