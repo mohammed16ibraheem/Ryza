@@ -28,5 +28,20 @@
       "/api/images/public/images/Hijabs/Hijab-Essentials/1778151889656_1_1000606183.jpg"
     ],
     "folderPath": "images/Hijabs/Hijab-Essentials"
+  },
+  {
+    "id": "867a1796-a9a9-421a-bb47-6a8767727629",
+    "name": "Loop pins",
+    "title": "Loop pins",
+    "description": "1 pack includes 8 looppins.\nSecure your hijab with these snag-free loop pins designed to prevent fabric damage and needle pricks. The smooth locking mechanism provides a comfortable, all-day hold for a polished and effortless look.",
+    "price": 159,
+    "discount": "6",
+    "category": "Hijabs",
+    "subCategory": "Accessory",
+    "images": [
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778152992226_0_1000420112.jpg",
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778152992227_1_1000606243.jpg"
+    ],
+    "folderPath": "images/Hijabs/Hijab-Essentials"
   }
 ]
