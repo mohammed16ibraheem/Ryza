@@ -1,18 +1,5 @@
 [
   {
-    "id": "2c96703b-645a-4f65-9210-e51b5d56b14e",
-    "name": "Oo",
-    "title": "Oo",
-    "description": "Ggh",
-    "price": 3,
-    "discount": "",
-    "category": "Salah Essential",
-    "images": [
-      "/api/images/public/images/Salah-Essential/1778144913261_0_1001388075.jpg"
-    ],
-    "folderPath": "images/Salah-Essential"
-  },
-  {
     "id": "ad88c720-e659-42e6-83c8-a9076aec2108",
     "name": "Ball pin in black ",
     "title": "Ball pin in black ",
