@@ -1,1 +1,15 @@
-[]
+[
+  {
+    "id": "1dda815d-0eef-4532-8af0-e29973e6907b",
+    "name": "Ok",
+    "title": "Ok",
+    "description": "Djdjd",
+    "price": 2,
+    "discount": "",
+    "category": "Salah Essential",
+    "images": [
+      "/api/images/public/images/Salah-Essential/1778144506456_0_1001388075.jpg"
+    ],
+    "folderPath": "images/Salah-Essential"
+  }
+]
