@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadToGitHub, deleteFromGitHub } from '@/lib/github-storage'
+import { promises as fs } from 'fs'
+import path from 'path'
 
 const PRODUCTS_FILE_PATH = 'public/data/products.json'
 
@@ -43,8 +45,16 @@ async function getProductsFromStorage(): Promise<any[]> {
     }
 
     if (!config.token || !config.owner || !config.repo) {
-      console.warn('GitHub storage not configured - returning empty products')
-      return []
+      // Fallback: serve products from local file so the storefront still works
+      // even when GitHub storage env vars aren't configured (e.g. new Vercel project).
+      try {
+        const localPath = path.join(process.cwd(), 'public', 'data', 'products.json')
+        const text = await fs.readFile(localPath, 'utf-8')
+        const products = JSON.parse(text)
+        return Array.isArray(products) ? products : []
+      } catch {
+        return []
+      }
     }
 
     // For public repos, use raw.githubusercontent.com (faster)
