@@ -32,5 +32,20 @@
       "/api/images/public/images/Hijabs/Hijab-Essentials/1778251614094_1_1000607553.jpg"
     ],
     "folderPath": "images/Hijabs/Hijab-Essentials"
+  },
+  {
+    "id": "17f9db4d-e442-48c8-965f-0faa3ca829d3",
+    "name": "Loop pins",
+    "title": "Loop pins",
+    "description": "One pack includes 3 black and 3 white colour.\n",
+    "price": 99,
+    "discount": "",
+    "category": "Hijabs",
+    "subCategory": "Accessory",
+    "images": [
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778252628037_0_1000573627.jpg",
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778252628038_1_1000607578.jpg"
+    ],
+    "folderPath": "images/Hijabs/Hijab-Essentials"
   }
 ]
