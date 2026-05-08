@@ -63,5 +63,20 @@
       "/api/images/public/images/Hijabs/Hijab-Essentials/1778253958983_2_1000607582.png"
     ],
     "folderPath": "images/Hijabs/Hijab-Essentials"
+  },
+  {
+    "id": "1779fb2b-f526-413f-ae45-5f83b93fbf59",
+    "name": "Non-snag magnetic pins",
+    "title": "Non-snag magnetic pins",
+    "description": "The pins are small, rounded, and metallic, presented in five distinct finishes:\nBronze/Copper\nRose Gold\nClassic Gold\nGunmetal/Black\nSilver",
+    "price": 499,
+    "discount": "",
+    "category": "Hijabs",
+    "subCategory": "Accessory",
+    "images": [
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778254671176_0_1000607554.jpg",
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778254671177_1_1000607589.jpg"
+    ],
+    "folderPath": "images/Hijabs/Hijab-Essentials"
   }
 ]
