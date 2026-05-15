@@ -156,5 +156,28 @@
       "/api/images/public/images/Hijabs/Hijab-Essentials/1778861422547_0_1000614822.png"
     ],
     "folderPath": "images/Hijabs/Hijab-Essentials"
+  },
+  {
+    "id": "8f1f33df-6aa6-4040-9c60-f6078c9df62f",
+    "name": "Ribbed jersey tupecaps ",
+    "title": "Ribbed jersey tupecaps ",
+    "description": "This premium ribbed jersey tube cap offers a perfect blend of comfort and functionality with its high-stretch, breathable fabric. Its classic black finish and vertical ribbed texture ensure a secure, non-slip fit, providing full coverage and a sleek, seamless look under any hijab.",
+    "price": 119,
+    "discount": "",
+    "category": "Hijabs",
+    "subCategory": "Accessory",
+    "images": [
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778861852540_0_1000614820.png",
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778861852541_1_1000614821.png",
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778861852542_2_1000614823.png",
+      "/api/images/public/images/Hijabs/Hijab-Essentials/1778861852543_3_1000614822.png"
+    ],
+    "imageColors": [
+      "Peach ",
+      "Ash ",
+      "Cream",
+      "Silver"
+    ],
+    "folderPath": "images/Hijabs/Hijab-Essentials"
   }
 ]
